@@ -23,10 +23,14 @@
             "id": "770012688145e431",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành).md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành)"
             }
           }
         ],
@@ -204,10 +208,11 @@
   },
   "active": "770012688145e431",
   "lastOpenFiles": [
-    "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 1.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 1.md",
     "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành).md",
     "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết).md",
+    "(Lời nói hành động) -fádf fádf  test- (Sự thực hành).md",
+    "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 1.md",
+    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 1.md",
     "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 3.md",
     "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 7.md",
     "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 2.md",
@@ -219,7 +224,6 @@
     "(Sự thực hành) -enables- (Sự nhất quán).md",
     "(Sự thực hành) -enables- (Sự nhất quán) 1.md",
     "(Cái thấy Cái biết) -relates- (Cái thấy).md",
-    "(Lời nói hành động) -fádf fádf  test- (Sự thực hành).md",
     "(Cái thấy Cái biết) -relates- (Cái biết) 2.md",
     "(Cái thấy Cái biết) -relates- (Cái biết) 1.md",
     "(Cái thấy Cái biết) -relates- (Cái biết).md",

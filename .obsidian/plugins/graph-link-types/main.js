@@ -65700,35 +65700,46 @@ var LinkManager = class {
       text.off("pointertap");
 
       // 3. Thêm sự kiện 'pointertap' (tương đương click)
-      text.on("pointertap", () => {
-        // --- Cấu hình cho link Obsidian ---
+      // Lưu ý: Hàm callback giờ là một hàm "async"
+      text.on("pointertap", async () => {
+        try {
+          // --- Lấy thông tin note như cũ ---
+          const cleanedSourceId = link.source.id.replace(/\.md$/, "");
+          const cleanedTargetId = link.target.id.replace(/\.md$/, "");
 
-        const cleanedSourceId = link.source.id.replace(/\.md$/, "");
-        const cleanedTargetId = link.target.id.replace(/\.md$/, "");
+          const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
+          const filePath = `${noteName}.md`;
 
-        // Tạo tên note mới theo định dạng bạn muốn
-        const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
-        const noteContent = `---
+          // --- DÙNG TRỰC TIẾP API CỦA OBSIDIAN ---
+
+          // 1. Kiểm tra xem file đã tồn tại hay chưa
+          // Giả định 'app' đã được truyền vào hoặc có sẵn trong scope này
+          const fileExists = await app.vault.adapter.exists(filePath);
+
+          // 2. Thực hiện hành động dựa trên kết quả kiểm tra
+          if (fileExists) {
+            // NẾU FILE TỒN TẠI: Mở nó lên
+            console.log(`Note exists. Opening: ${filePath}`);
+            await app.workspace.openLinkText(filePath, "", false);
+          } else {
+            // NẾU FILE KHÔNG TỒN TẠI: Tạo file mới
+            console.log(`Note does not exist. Creating: ${filePath}`);
+            const noteContent = `---
 type: relation
 tag: relation
 ---
 # [[${cleanedSourceId}]] -${metaText}- [[${cleanedTargetId}]]
 Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
 `;
-        // Mã hóa các thành phần để tạo URL hợp lệ, tránh lỗi với dấu cách hoặc ký tự đặc biệt
+            // Dùng API để tạo file
+            const newFile = await app.vault.create(filePath, noteContent);
 
-        const encodedName = encodeURIComponent(noteName);
-        const encodedContent = encodeURIComponent(noteContent);
-
-        // Tạo URI hoàn chỉnh
-        const obsidianURI = `obsidian://new?name=${encodedName}&content=${encodedContent}`;
-
-
-        // In ra console để kiểm tra (hữu ích khi debug)
-        console.log("Mở Obsidian URI:", obsidianURI);
-
-        // Mở link trong tab mới, trình duyệt sẽ chuyển hướng tới ứng dụng Obsidian
-        window.open(obsidianURI);
+            // Mở file vừa được tạo
+            await app.workspace.openLinkText(newFile.path, "", false);
+          }
+        } catch (error) {
+          console.error("Lỗi khi xử lý click trên link của graph:", error);
+        }
       });
     }
   }
