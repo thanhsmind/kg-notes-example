@@ -65644,7 +65644,7 @@ var LinkManager = class {
       const perpY = nx;
 
       // 3. Đặt khoảng cách bạn muốn đẩy text ra khỏi đường link
-      const offsetDistance = 10; // ⬅️ Thay đổi giá trị này để điều chỉnh khoảng cách lệch
+      const offsetDistance = 10; // ⬅️ Thay đổi giá trị này để điều chỉnh khoảng cách lệch // @thanhnp: thay đổi text giữa các link
 
       // 4. Tính vị trí cuối cùng bằng cách cộng offset vào điểm giữa
       finalX = midX + perpX * offsetDistance;
@@ -65722,6 +65722,7 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
 
         // Tạo URI hoàn chỉnh
         const obsidianURI = `obsidian://new?name=${encodedName}&content=${encodedContent}`;
+
 
         // In ra console để kiểm tra (hữu ích khi debug)
         console.log("Mở Obsidian URI:", obsidianURI);
