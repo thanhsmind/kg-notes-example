@@ -3,7 +3,7 @@ enables:
   - "[[Sự nhất quán]]"
 diễn biến từ: "[[Cái thấy Cái biết]]"
 dùng: "[[Cái thấy Cái biết]]"
-hoàn thiện bởi: "[[Lời nói hành động]]"
+hoàn thiện bởi:
 ---
 
 
@@ -17,3 +17,4 @@ hoàn thiện bởi: "[[Lời nói hành động]]"
 Chúng ta không thể thực hành những gì chưa biết.
 
 
+t
