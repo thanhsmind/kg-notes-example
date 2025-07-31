@@ -20,13 +20,17 @@
             }
           },
           {
-            "id": "28e90d48476df3c3",
+            "id": "1ebe052ba00e2734",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "(Cái thấy Cái biết) -relates- (Cái biết) 2.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "(Cái thấy Cái biết) -relates- (Cái biết) 2"
             }
           }
         ],
@@ -202,8 +206,17 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "28e90d48476df3c3",
+  "active": "1ebe052ba00e2734",
   "lastOpenFiles": [
+    "(Cái thấy Cái biết) -relates- (Cái biết) 2.md",
+    "(Cái thấy Cái biết) -relates- (Cái biết) 1.md",
+    "(Cái thấy Cái biết) -relates- (Cái biết).md",
+    "Cái thấy Cái biết -relates- Cái thấy.md",
+    "Cái thấy Cái biết -relates- Cái thấy 1.md",
+    "Sự thực hành -enables- Sự nhất quán 1.md",
+    "Sự thực hành -enables- Sự nhất quán.md",
+    "fádf fádf  test.md",
+    "test.md",
     "Lời nói hành động.md",
     "Sự nhất quán.md",
     "Cái thấy Cái biết.md",
@@ -224,19 +237,10 @@
     "2025-07-27.md",
     "100_Philosophy and psychology/150_Psychology/Anxiety.md",
     "100_Philosophy and psychology/150_Psychology/(parent support)-impact-((Psychological Control)-Impact-(EPB)).md",
-    "100_Philosophy and psychology/150_Psychology/(Self-Control)-Impact-SME.md",
-    "100_Philosophy and psychology/150_Psychology/(Parental Psychological Control)-Impact-(Self-control).md",
-    "100_Philosophy and psychology/150_Psychology/Internet addiction.md",
-    "100_Philosophy and psychology/150_Psychology/((phone addiction)-relate-(internet addiction)).md",
-    "100_Philosophy and psychology/150_Psychology/(Negative Perfectionism)-Impact-IPB.md",
-    "100_Philosophy and psychology/150_Psychology/(Negative Perfectionism)-Impact-EPB.md",
-    "100_Philosophy and psychology/Property (Philosophy).md",
     "Attachments/Pasted image 20221106113323.gif",
     "Attachments/Pasted image 20221006142436.png",
     "Attachments/动画.gif",
-    "000_Computer science, information and general works/Property (HTML).md",
     "Attachments/Pasted image 20221006150723.png",
-    "100_Philosophy and psychology/150_Psychology/Parental Psychological Control.md",
     "Attachments/Pasted image 20221006102437.png",
     "Attachments/Pasted image 20221006150351.gif"
   ]

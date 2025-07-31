@@ -65642,7 +65642,7 @@ var LinkManager = class {
       text.y = y2;
       text.scale.set(1 / (3 * renderer.nodeScale));
       //text.style.fill = this.textColor;  // @thanhnp: màu default
-      text.style.fill = this.tagColors.get(metaText).color; // @thanhnp: sửa lại tên của link edge cho cùng màu với link
+      text.style.fill = this.tagColors.get(metaText)?.color ?? this.textColor; // @thanhnp: sửa lại tên của link edge cho cùng màu với link
       if (tagNames) {
         if (
           !link.source ||
@@ -65659,6 +65659,49 @@ var LinkManager = class {
       } else {
         text.alpha = 0;
       }
+
+      // ===================================================================
+      // THAY ĐỔI BẮT ĐẦU: Thêm tương tác click để tạo note Obsidian
+      // @thanhnp: thêm click sự kiện
+      // ===================================================================
+
+      // 1. Kích hoạt tương tác cho đối tượng text
+      text.interactive = true;
+      text.buttonMode = true; // Biến con trỏ thành hình bàn tay khi di chuột vào
+
+      // 2. Xóa listener cũ để tránh việc thêm nhiều lần khi hàm được gọi liên tục
+      text.off("pointertap");
+
+      // 3. Thêm sự kiện 'pointertap' (tương đương click)
+      text.on("pointertap", () => {
+        // --- Cấu hình cho link Obsidian ---
+
+        const cleanedSourceId = link.source.id.replace(/\.md$/, "");
+        const cleanedTargetId = link.target.id.replace(/\.md$/, "");
+
+        // Tạo tên note mới theo định dạng bạn muốn
+        const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
+        const noteContent = `---
+type: relation
+tag: relation
+---
+# [[${cleanedSourceId}]] -${metaText}- [[${cleanedTargetId}]]
+Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
+`;
+        // Mã hóa các thành phần để tạo URL hợp lệ, tránh lỗi với dấu cách hoặc ký tự đặc biệt
+
+        const encodedName = encodeURIComponent(noteName);
+        const encodedContent = encodeURIComponent(noteContent);
+
+        // Tạo URI hoàn chỉnh
+        const obsidianURI = `obsidian://new?name=${encodedName}&content=${encodedContent}`;
+
+        // In ra console để kiểm tra (hữu ích khi debug)
+        console.log("Mở Obsidian URI:", obsidianURI);
+
+        // Mở link trong tab mới, trình duyệt sẽ chuyển hướng tới ứng dụng Obsidian
+        window.open(obsidianURI);
+      });
     }
   }
   // Update the position of the text on the graph
