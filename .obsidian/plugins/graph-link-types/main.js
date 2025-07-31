@@ -65624,9 +65624,36 @@ var LinkManager = class {
     }
     const midX = (link.source.x + link.target.x) / 2;
     const midY = (link.source.y + link.target.y) / 2;
+
+    // 2. Tính vector pháp tuyến (vuông góc) để xác định hướng đẩy ra
+    const dx = link.target.x - link.source.x;
+    const dy = link.target.y - link.source.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    let finalX = midX;
+    let finalY = midY;
+
+    // Chỉ tính toán khi 2 node không trùng nhau
+    if (distance > 0) {
+      // Vector chỉ phương đơn vị
+      const nx = dx / distance;
+      const ny = dy / distance;
+
+      // Vector pháp tuyến (vuông góc)
+      const perpX = -ny;
+      const perpY = nx;
+
+      // 3. Đặt khoảng cách bạn muốn đẩy text ra khỏi đường link
+      const offsetDistance = 10; // ⬅️ Thay đổi giá trị này để điều chỉnh khoảng cách lệch
+
+      // 4. Tính vị trí cuối cùng bằng cách cộng offset vào điểm giữa
+      finalX = midX + perpX * offsetDistance;
+      finalY = midY + perpY * offsetDistance;
+    }
+
     const { x: x2, y: y2 } = this.getLinkToTextCoordinates(
-      midX,
-      midY,
+      finalX,
+      finalY,
       renderer.panX,
       renderer.panY,
       renderer.scale
