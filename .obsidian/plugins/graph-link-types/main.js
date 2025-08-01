@@ -65423,6 +65423,9 @@ var LinkManager = class {
     this.spaceBetweenTextAndLine = 1;
     this.linksMap = /* @__PURE__ */ new Map();
     this.tagColors = /* @__PURE__ */ new Map();
+    // Thêm các biến này để theo dõi double-click
+    this.lastClickTime = 0;
+    this.lastClickTarget = null;
     this.detectThemeChange();
   }
   generateKey(sourceId, targetId) {
@@ -65700,42 +65703,58 @@ var LinkManager = class {
       text.off("pointertap");
 
       // 3. Thêm sự kiện 'pointertap' (tương đương click)
+      // @thanhnp: thêm sự kiện dblclick
       // Lưu ý: Hàm callback giờ là một hàm "async"
       text.on("pointertap", async () => {
         try {
-          // --- Lấy thông tin note như cũ ---
-          const cleanedSourceId = link.source.id.replace(/\.md$/, "");
-          const cleanedTargetId = link.target.id.replace(/\.md$/, "");
+          const doubleClickSpeed = 300; // Thời gian tối đa giữa 2 cú click (300ms)
+          const currentTime = Date.now();
 
-          const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
-          const filePath = `${noteName}.md`;
+          // Kiểm tra xem cú click này có phải là double-click không
+          if (
+            currentTime - this.lastClickTime < doubleClickSpeed &&
+            this.lastClickTarget === event.currentTarget // event.currentTarget là đối tượng được click (text)
+          ) {
+            // --- ĐÂY LÀ DOUBLE-CLICK ---
+            console.log("Double-click detected!");
 
-          // --- DÙNG TRỰC TIẾP API CỦA OBSIDIAN ---
+            // Reset trạng thái để tránh click lần thứ 3 cũng bị tính
+            this.lastClickTime = 0;
+            this.lastClickTarget = null;
 
-          // 1. Kiểm tra xem file đã tồn tại hay chưa
-          // Giả định 'app' đã được truyền vào hoặc có sẵn trong scope này
-          const fileExists = await app.vault.adapter.exists(filePath);
+            // Chạy logic async của bạn ở đây
+            // Dùng một hàm ẩn danh async để không block luồng chính
+            (async () => {
+              try {
+                const cleanedSourceId = link.source.id.replace(/\.md$/, "");
+                const cleanedTargetId = link.target.id.replace(/\.md$/, "");
+                const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
+                const filePath = `${noteName}.md`;
 
-          // 2. Thực hiện hành động dựa trên kết quả kiểm tra
-          if (fileExists) {
-            // NẾU FILE TỒN TẠI: Mở nó lên
-            console.log(`Note exists. Opening: ${filePath}`);
-            await app.workspace.openLinkText(filePath, "", false);
-          } else {
-            // NẾU FILE KHÔNG TỒN TẠI: Tạo file mới
-            console.log(`Note does not exist. Creating: ${filePath}`);
-            const noteContent = `---
+                const fileExists = await app.vault.adapter.exists(filePath);
+
+                if (fileExists) {
+                  await app.workspace.openLinkText(filePath, "", false);
+                } else {
+                  const noteContent = `---
 type: relation
 tag: relation
 ---
 # [[${cleanedSourceId}]] -${metaText}- [[${cleanedTargetId}]]
 Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
 `;
-            // Dùng API để tạo file
-            const newFile = await app.vault.create(filePath, noteContent);
-
-            // Mở file vừa được tạo
-            await app.workspace.openLinkText(newFile.path, "", false);
+                  const newFile = await app.vault.create(filePath, noteContent);
+                  await app.workspace.openLinkText(newFile.path, "", false);
+                }
+              } catch (error) {
+                console.error("Lỗi khi xử lý double-click:", error);
+              }
+            })();
+          } else {
+            // --- ĐÂY LÀ SINGLE-CLICK ---
+            // Cập nhật lại trạng thái cho cú click đầu tiên
+            this.lastClickTime = currentTime;
+            this.lastClickTarget = event.currentTarget;
           }
         } catch (error) {
           console.error("Lỗi khi xử lý click trên link của graph:", error);
