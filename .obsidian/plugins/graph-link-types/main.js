@@ -65726,8 +65726,8 @@ var LinkManager = class {
             // Dùng một hàm ẩn danh async để không block luồng chính
             (async () => {
               try {
-                const cleanedSourceId = link.source.id.replace(/\.md$/, "");
-                const cleanedTargetId = link.target.id.replace(/\.md$/, "");
+                const cleanedSourceId = link.source.text._text; //link.source.id.replace(/\.md$/, "");
+                const cleanedTargetId = link.target.text._text; //link.target.id.replace(/\.md$/, "");
                 const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
                 const filePath = `${noteName}.md`;
 
@@ -65979,7 +65979,8 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
           }
           break;
         default:
-          return null;
+          break; // @thanhnp: fixbug search link bị sai
+        //return null;
       }
     }
     return null;

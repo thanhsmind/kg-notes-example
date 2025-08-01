@@ -23,14 +23,38 @@
             "id": "770012688145e431",
             "type": "leaf",
             "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          },
+          {
+            "id": "684529b2fcd9deed",
+            "type": "leaf",
+            "state": {
               "type": "markdown",
               "state": {
-                "file": "(Sự thực hành) -enables- (Sự nhất quán).md",
+                "file": "README.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "(Sự thực hành) -enables- (Sự nhất quán)"
+              "title": "README"
+            }
+          },
+          {
+            "id": "9d1108f5afc0146b",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "100_Philosophy and psychology/150_Psychology/Use of multiple SM platforms.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "Use of multiple SM platforms"
             }
           }
         ],
@@ -193,8 +217,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 299.5,
-    "collapsed": true
+    "width": 299.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -208,40 +231,48 @@
   },
   "active": "770012688145e431",
   "lastOpenFiles": [
-    "(Sự thực hành) -enables- (Sự nhất quán).md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết).md",
-    "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành).md",
-    "Lời nói hành động.md",
-    "(Lời nói hành động) -fádf fádf  test- (Sự thực hành).md",
-    "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 1.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 1.md",
-    "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 3.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 7.md",
-    "(Cái thấy Cái biết) -hoàn thiện bởi- (Sự thực hành) 2.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 6.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 5.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 4.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 3.md",
-    "(Sự thực hành) -diễn biến từ- (Cái thấy Cái biết) 2.md",
-    "(Sự thực hành) -enables- (Sự nhất quán) 1.md",
-    "(Cái thấy Cái biết) -relates- (Cái thấy).md",
-    "(Cái thấy Cái biết) -relates- (Cái biết) 2.md",
-    "(Cái thấy Cái biết) -relates- (Cái biết) 1.md",
-    "(Cái thấy Cái biết) -relates- (Cái biết).md",
-    "Cái thấy Cái biết -relates- Cái thấy.md",
-    "Cái thấy Cái biết -relates- Cái thấy 1.md",
-    "Sự thực hành -enables- Sự nhất quán 1.md",
-    "Sự thực hành -enables- Sự nhất quán.md",
-    "fádf fádf  test.md",
-    "test.md",
+    "(Parental Psychological Control) -impact- (Self-control).md",
+    "100_Philosophy and psychology/150_Psychology/Use of multiple SM platforms.md",
+    "100_Philosophy and psychology/150_Psychology/Stroop effect.md",
+    "100_Philosophy and psychology/150_Psychology/Social response model.md",
+    "100_Philosophy and psychology/150_Psychology/Social media engagement.md",
+    "100_Philosophy and psychology/150_Psychology/Social expectation model.md",
+    "100_Philosophy and psychology/150_Psychology/SME-Impact-Anxiety.md",
+    "100_Philosophy and psychology/150_Psychology/Self-control.md",
+    "100_Philosophy and psychology/150_Psychology/Regulatory focus theory.md",
+    "100_Philosophy and psychology/150_Psychology/problematic internet usage.md",
+    "100_Philosophy and psychology/150_Psychology/phone addiction.md",
+    "100_Philosophy and psychology/150_Psychology/Problem behavior.md",
+    "100_Philosophy and psychology/150_Psychology/Perfectism-Impact-(suicide thoughts).md",
+    "100_Philosophy and psychology/150_Psychology/Perfectism-Impact-(Dietary Disorders).md",
+    "100_Philosophy and psychology/150_Psychology/Perfectionism-Impact-Depression.md",
+    "100_Philosophy and psychology/150_Psychology/Perfectionism-Impact-Anxiety.md",
+    "100_Philosophy and psychology/150_Psychology/Perfectionism-impact-(physical disorder).md",
+    "100_Philosophy and psychology/150_Psychology/Perfectionism.md",
+    "100_Philosophy and psychology/150_Psychology/PC-Impact-NP.md",
+    "100_Philosophy and psychology/150_Psychology/PC-Impact-Depression.md",
+    "100_Philosophy and psychology/150_Psychology/Parental Psychological Control.md",
+    "100_Philosophy and psychology/150_Psychology/Parental Control.md",
+    "100_Philosophy and psychology/150_Psychology/parent support.md",
+    "100_Philosophy and psychology/150_Psychology/Negative Perfectionism.md",
+    "100_Philosophy and psychology/150_Psychology/Internet game addiction.md",
+    "100_Philosophy and psychology/150_Psychology/Internet addiction.md",
+    "Attachments/Pasted image 20221106113323.gif",
+    "Attachments/Pasted image 20221011211543.png",
+    "Attachments/Pasted image 20221011211426.png",
+    "Attachments/Pasted image 20221007203325.gif",
+    "Attachments/Pasted image 20221007193220.png",
+    "Attachments/Pasted image 20221006150351.png",
+    "Attachments/Pasted image 20221006150351.gif",
+    "Attachments/Pasted image 20221006145916.png",
+    "Attachments/Pasted image 20221006145916.gif",
+    "Attachments/Pasted image 20221006145129.png",
+    "Attachments",
+    "100_Philosophy and psychology/150_Psychology",
+    "100_Philosophy and psychology",
+    "000_Computer science, information and general works",
     "kg-notes-example",
     "TEST",
-    "Untitled",
-    "Attachments/Pasted image 20221106113323.gif",
-    "Attachments/Pasted image 20221006142436.png",
-    "Attachments/动画.gif",
-    "Attachments/Pasted image 20221006150723.png",
-    "Attachments/Pasted image 20221006102437.png",
-    "Attachments/Pasted image 20221006150351.gif"
+    "Untitled"
   ]
 }
