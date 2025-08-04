@@ -46,21 +46,63 @@
             }
           },
           {
-            "id": "ed6b8314f77a0d2b",
+            "id": "ba4307a66732af35",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Attachments/(Parental Psychological Control) -impact- (Self-control).md",
+                "file": "100_Philosophy and psychology/150_Psychology/Depression.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "(Parental Psychological Control) -impact- (Self-control)"
+              "title": "Depression"
+            }
+          },
+          {
+            "id": "5915506617cd8fbe",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "100_Philosophy and psychology/150_Psychology/(Depression) -impact- (Perfectionism).md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "(Depression) -impact- (Perfectionism)"
+            }
+          },
+          {
+            "id": "817a90eeccf92a42",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "100_Philosophy and psychology/150_Psychology/(Perfectionism) -impact- (Depression).md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "(Perfectionism) -impact- (Depression)"
+            }
+          },
+          {
+            "id": "adb77cf2ed57073a",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "100_Philosophy and psychology/150_Psychology/(Depression) -impact- (Perfectionism).md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "(Depression) -impact- (Perfectionism)"
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -127,7 +169,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 492.5
+    "width": 492.5,
+    "collapsed": true
   },
   "right": {
     "id": "4710f9687527d4ba",
@@ -219,7 +262,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 299.5
+    "width": 299.5,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -231,8 +275,13 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "ed6b8314f77a0d2b",
+  "active": "79612650100fc6ec",
   "lastOpenFiles": [
+    "100_Philosophy and psychology/150_Psychology/(Depression) -impact- (Perfectionism).md",
+    "100_Philosophy and psychology/150_Psychology/(Perfectionism) -impact- (Depression).md",
+    "100_Philosophy and psychology/150_Psychology/Depression.md",
+    "100_Philosophy and psychology/150_Psychology/Perfectionism.md",
+    "100_Philosophy and psychology/150_Psychology/Parental Psychological Control.md",
     "Attachments/(Parental Psychological Control) -impact- (Self-control).md",
     "100_Philosophy and psychology/150_Psychology/(Perfectionism) -impact- (Anxiety).md",
     "Attachments/(Parental Psychological Control) -impact- (Negative Perfectionism).md",
@@ -254,11 +303,6 @@
     "100_Philosophy and psychology/150_Psychology/Regulatory focus theory.md",
     "100_Philosophy and psychology/150_Psychology/problematic internet usage.md",
     "100_Philosophy and psychology/150_Psychology/phone addiction.md",
-    "100_Philosophy and psychology/150_Psychology/Problem behavior.md",
-    "100_Philosophy and psychology/150_Psychology/Perfectism-Impact-(suicide thoughts).md",
-    "100_Philosophy and psychology/150_Psychology/Perfectism-Impact-(Dietary Disorders).md",
-    "100_Philosophy and psychology/150_Psychology/Perfectionism-Impact-Depression.md",
-    "100_Philosophy and psychology/150_Psychology/Perfectionism-Impact-Anxiety.md",
     "Attachments/Pasted image 20221106113323.gif",
     "Attachments/Pasted image 20221011211543.png",
     "Attachments/Pasted image 20221011211426.png",

@@ -65870,7 +65870,35 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
       graphics.lineStyle(3 / Math.sqrt(renderer.nodeScale), color);
       graphics.alpha = 0.6;
       graphics.moveTo(x1, y1);
-      graphics.lineTo(x2, y2);
+      // --- KIỂM TRA VÀ VẼ CONG HOẶC THẲNG ---
+      if (link.isCurved) {
+        // NẾU LÀ LINK CẦN VẼ CONG
+
+        // 1. Tìm điểm giữa của đoạn thẳng
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+
+        // 2. Tìm vector pháp tuyến (vuông góc) để đẩy điểm kiểm soát ra
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const perpX = -dy / distance;
+        const perpY = dx / distance;
+
+        // 3. Đặt độ cong (khoảng cách đẩy điểm kiểm soát ra)
+        const curveAmount = 25 * Math.sqrt(renderer.scale); // ⬅️ Tăng/giảm giá trị này để điều chỉnh độ cong
+
+        // 4. Tính tọa độ điểm kiểm soát (control point)
+        const cpX = midX + perpX * curveAmount;
+        const cpY = midY + perpY * curveAmount;
+
+        // 5. Vẽ đường cong
+        graphics.quadraticCurveTo(cpX, cpY, x2, y2);
+      } else {
+        // NẾU LÀ LINK THẲNG NHƯ BÌNH THƯỜNG
+        graphics.lineTo(x2, y2);
+      }
     }
   }
   // Create or update text for a given link
@@ -66151,6 +66179,12 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
       })
     );
   }
+
+  generateCanonicalKey(id1, id2) {
+    // Sắp xếp 2 ID theo thứ tự bảng chữ cái rồi nối lại
+    // để đảm bảo key cho A->B và B->A là giống nhau.
+    return [id1, id2].sort().join("|");
+  }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
@@ -66223,7 +66257,38 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
       return;
     }
     const renderer = this.currentRenderer;
+    // --- BẮT ĐẦU LOGIC XỬ LÝ LINK HAI CHIỀU ---
+    // @thanhnp vẽ cong
+
+    // 1. Nhóm các link lại bằng key chuẩn hóa
+    const linkGroups = new Map();
+    renderer.links.forEach((link) => {
+      // Reset lại trạng thái isCurved cho mỗi lần cập nhật
+      link.isCurved = false;
+
+      const canonicalKey = this.generateCanonicalKey(
+        link.source.id,
+        link.target.id
+      );
+      if (!linkGroups.has(canonicalKey)) {
+        linkGroups.set(canonicalKey, []);
+      }
+      linkGroups.get(canonicalKey).push(link);
+    });
+
+    // 2. Duyệt qua các nhóm và đánh dấu link cần vẽ cong
+    for (const group of linkGroups.values()) {
+      // Nếu một nhóm có 2 link, đó là cặp hai chiều
+      if (group.length === 2) {
+        // Đánh dấu link thứ hai trong cặp để vẽ cong
+        // (Bạn có thể chọn bất kỳ logic nào, miễn là nhất quán)
+        group[1].isCurved = true;
+      }
+    }
+    // --- KẾT THÚC LOGIC XỬ LÝ ---
+
     let updateMap = false;
+
     if (this.animationFrameId && this.animationFrameId % 10 == 0) {
       updateMap = true;
       this.linkManager.removeLinks(renderer, renderer.links);

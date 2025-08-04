@@ -5,7 +5,7 @@ Type: Concept
 Category: 
 tags: ["#review"]
 ---
-
+impact:: [[100_Philosophy and psychology/150_Psychology/Perfectionism|Perfectionism]]
 # 影响因素
 
 - 精神分析学派认为，抑郁是一种转向内心的愤怒。处于抑郁中的人存有一种无意识的愤怒和敌意感。例如，他们可能想向家人大打出手。但是一个正常人就不会有这种感觉。精神分析学家还认为，每个人都有内在的、阻止人表现出敌意的社会标准和价值观念。因此，这些愤怒感就转向内心，人就“向自己出气”。用精神分析理论来解释，这是一种无意识水平的表现。 [@burger2014rengexinlixu, p. 9]
