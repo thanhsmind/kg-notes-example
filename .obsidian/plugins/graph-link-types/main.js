@@ -65726,16 +65726,62 @@ var LinkManager = class {
             // Dùng một hàm ẩn danh async để không block luồng chính
             (async () => {
               try {
-                const cleanedSourceId = link.source.text._text; //link.source.id.replace(/\.md$/, "");
-                const cleanedTargetId = link.target.text._text; //link.target.id.replace(/\.md$/, "");
+                const cleanedSourceId = link.source.text._text;
+                const cleanedTargetId = link.target.text._text;
                 const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
-                const filePath = `${noteName}.md`;
 
-                const fileExists = await app.vault.adapter.exists(filePath);
+                // --- DÙNG API ĐỂ TÌM FILE MÀ KHÔNG CẦN BIẾT ĐƯỜNG DẪN ---
 
-                if (fileExists) {
-                  await app.workspace.openLinkText(filePath, "", false);
+                // 1. Dùng metadataCache để tìm file. Hàm này không cần đuôi .md
+                // và linh hoạt hơn với các đường dẫn.
+                const file = app.metadataCache.getFirstLinkpathDest(
+                  noteName,
+                  ""
+                ); // "" nghĩa là tìm trong toàn bộ vault
+
+                // 2. Kiểm tra xem file có thực sự tồn tại không
+                if (file) {
+                  // NẾU FILE TỒN TẠI: Mở nó bằng đường dẫn chính xác của nó
+                  console.log(`Note exists at path: ${file.path}. Opening it.`);
+                  // file.path sẽ luôn là đường dẫn đúng, dù người dùng đã di chuyển file
+                  await app.workspace.openLinkText(file.path, "", false);
                 } else {
+                  // --- LOGIC XÁC ĐỊNH THƯ MỤC TẠO FILE ---
+                  let creationPath;
+                  const defaultLocation =
+                    app.vault.getConfig("newFileLocation");
+
+                  if (defaultLocation === "current") {
+                    // Lấy folder của note nguồn (source)
+                    const sourceFile = app.vault.getAbstractFileByPath(
+                      link.source.id
+                    );
+
+                    // Kiểm tra xem sourceFile và thư mục cha của nó có tồn tại không
+                    if (sourceFile && sourceFile.parent) {
+                      const parentFolder = sourceFile.parent;
+                      // Nếu thư mục cha là thư mục gốc, không cần thêm phần đường dẫn
+                      if (parentFolder.isRoot()) {
+                        creationPath = `${noteName}.md`;
+                      } else {
+                        creationPath = `${parentFolder.path}/${noteName}.md`;
+                      }
+                    } else {
+                      // Trường hợp dự phòng: nếu không tìm thấy file nguồn, tạo ở thư mục gốc
+                      creationPath = `${noteName}.md`;
+                    }
+                  } else if (defaultLocation === "folder") {
+                    // Lấy folder được chỉ định trong cài đặt
+                    const folderPath = app.vault.getConfig("newFileFolderPath");
+                    creationPath = `${folderPath}/${noteName}.md`;
+                  } else {
+                    // Mặc định là thư mục gốc (root)
+                    creationPath = `${noteName}.md`;
+                  }
+                  // --- KẾT THÚC LOGIC XÁC ĐỊNH THƯ MỤC ---
+
+                  console.log(`Creating new note at: ${creationPath}`);
+
                   const noteContent = `---
 type: relation
 tag: relation
@@ -65743,7 +65789,10 @@ tag: relation
 # [[${cleanedSourceId}]] -${metaText}- [[${cleanedTargetId}]]
 Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
 `;
-                  const newFile = await app.vault.create(filePath, noteContent);
+                  const newFile = await app.vault.create(
+                    creationPath,
+                    noteContent
+                  );
                   await app.workspace.openLinkText(newFile.path, "", false);
                 }
               } catch (error) {
