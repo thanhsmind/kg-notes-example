@@ -65870,6 +65870,9 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
       graphics.lineStyle(3 / Math.sqrt(renderer.nodeScale), color);
       graphics.alpha = 0.6;
       graphics.moveTo(x1, y1);
+
+      let controlPoint = null;
+
       // --- KIỂM TRA VÀ VẼ CONG HOẶC THẲNG ---
       if (link.isCurved) {
         // NẾU LÀ LINK CẦN VẼ CONG
@@ -65898,6 +65901,46 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
       } else {
         // NẾU LÀ LINK THẲNG NHƯ BÌNH THƯỜNG
         graphics.lineTo(x2, y2);
+      }
+      // --- Logic vẽ mũi tên giờ sẽ hoạt động chính xác ---
+      let dirX, dirY;
+      if (controlPoint) {
+        // Nếu là đường cong, hướng sẽ là từ control point tới điểm cuối
+        dirX = x2 - controlPoint.x;
+        dirY = y2 - controlPoint.y;
+      } else {
+        // Nếu là đường thẳng, hướng là từ điểm đầu tới điểm cuối
+        dirX = x2 - x1;
+        dirY = y2 - y1;
+      }
+
+      // ... (phần còn lại của logic vẽ mũi tên giữ nguyên)
+      const len = Math.sqrt(dirX * dirX + dirY * dirY);
+      if (len > 0) {
+        // Thêm kiểm tra để tránh lỗi chia cho 0
+        dirX /= len;
+        dirY /= len;
+
+        const arrowLength = 10;
+        const arrowHalfWidth = 5;
+
+        const baseX = x2 - dirX * arrowLength;
+        const baseY = y2 - dirY * arrowLength;
+
+        const perpX = -dirY;
+        const perpY = dirX;
+
+        const wing1X = baseX + perpX * arrowHalfWidth;
+        const wing1Y = baseY + perpY * arrowHalfWidth;
+        const wing2X = baseX - perpX * arrowHalfWidth;
+        const wing2Y = baseY - perpY * arrowHalfWidth;
+
+        graphics.beginFill(color);
+        graphics.moveTo(x2, y2);
+        graphics.lineTo(wing1X, wing1Y);
+        graphics.lineTo(wing2X, wing2Y);
+        graphics.closePath();
+        graphics.endFill();
       }
     }
   }
