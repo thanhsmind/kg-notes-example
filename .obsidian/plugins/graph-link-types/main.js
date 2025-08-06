@@ -65701,7 +65701,18 @@ var LinkManager = class {
 
       // 2. Xóa listener cũ để tránh việc thêm nhiều lần khi hàm được gọi liên tục
       text.off("pointertap");
+      text.off("pointerover");
+      text.off("pointerout");
 
+      // Khi rê vào text: đổi cursor thành pointer
+      text.on("pointerover", () => {
+        renderer.interactiveEl.style.cursor = "pointer";
+      });
+
+      // Khi rời khỏi text: trả lại cursor
+      text.on("pointerout", () => {
+        renderer.interactiveEl.style.cursor = "default";
+      });
       // 3. Thêm sự kiện 'pointertap' (tương đương click)
       // @thanhnp: thêm sự kiện dblclick
       // Lưu ý: Hàm callback giờ là một hàm "async"
