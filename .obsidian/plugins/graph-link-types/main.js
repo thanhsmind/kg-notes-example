@@ -65668,6 +65668,25 @@ var LinkManager = class {
       renderer.px.stage.children &&
       renderer.px.stage.children.includes(text)
     ) {
+      // === Xác định tên note và kiểm tra tồn tại ===
+      const cleanedSourceId = link.source.text?._text || link.source.id;
+      const cleanedTargetId = link.target.text?._text || link.target.id;
+      const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
+      const file = app.metadataCache.getFirstLinkpathDest(noteName, "");
+      const noteExists = !!file;
+
+      // === Cập nhật nội dung text ===
+      // Giữ nguyên text gốc (metaText)
+      let displayText = metaText;
+
+      // Nếu note đã tồn tại, thêm "- noted" vào sau
+      if (noteExists) {
+        displayText = `${metaText} - noted`;
+      }
+
+      // Gán nội dung mới cho Pixi Text
+      text.text = displayText;
+
       text.x = x2;
       text.y = y2;
       text.scale.set(1 / (3 * renderer.nodeScale));
