@@ -65681,7 +65681,7 @@ var LinkManager = class {
 
       // Nếu note đã tồn tại, thêm "- noted" vào sau
       if (noteExists) {
-        displayText = `${metaText} - noted`;
+        displayText = `[${metaText}]`;
       }
 
       // Gán nội dung mới cho Pixi Text
