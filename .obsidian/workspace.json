@@ -6,6 +6,7 @@
       {
         "id": "23f3ca2bd6157d35",
         "type": "tabs",
+        "dimension": 45.68230277185501,
         "children": [
           {
             "id": "3090d59b0172f61e",
@@ -93,6 +94,7 @@
       {
         "id": "1848e5cb9f0d533c",
         "type": "tabs",
+        "dimension": 54.31769722814499,
         "children": [
           {
             "id": "cfa24a28fa14bb9f",
@@ -123,7 +125,7 @@
                   "repelStrength": 10,
                   "linkStrength": 1,
                   "linkDistance": 250,
-                  "scale": 2.755675960631078,
+                  "scale": 1.4019828977761024,
                   "close": false
                 }
               },
@@ -291,7 +293,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 299.5
+    "width": 299.5,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -303,7 +306,7 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "cfa24a28fa14bb9f",
+  "active": "d57c9fa8c703a308",
   "lastOpenFiles": [
     "100_Philosophy and psychology/150_Psychology/Anxiety.md",
     "100_Philosophy and psychology/150_Psychology/Depression.md",

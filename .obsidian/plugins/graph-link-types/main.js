@@ -65528,81 +65528,37 @@ var LinkManager = class {
       }
     }
   }
-  removeLink(renderer, link, linkType) {
-    var _a2, _b;
-    const key = this.generateKey(link.source.id, link.target.id, linkType);
-    const reverseKey = this.generateKey(link.target.id, link.source.id);
-    const gltLink = this.linksMap.get(key);
+  removeLink(renderer, gltLink) {
+    if (!gltLink) return;
+
+    const obsidianLink = gltLink.obsidianLink;
+    const linkType = gltLink.linkType;
+    if (!obsidianLink || !linkType) return;
+
+    const key = this.generateKey(
+      obsidianLink.source.id,
+      obsidianLink.target.id,
+      linkType
+    );
+
     if (
-      gltLink &&
       gltLink.pixiText &&
-      renderer.px &&
-      renderer.px.stage &&
-      renderer.px.stage.children &&
       renderer.px.stage.children.includes(gltLink.pixiText)
     ) {
       renderer.px.stage.removeChild(gltLink.pixiText);
       gltLink.pixiText.destroy();
     }
     if (
-      gltLink &&
       gltLink.pixiGraphics &&
-      renderer.px &&
-      renderer.px.stage &&
-      renderer.px.stage.children &&
       renderer.px.stage.children.includes(gltLink.pixiGraphics)
     ) {
       renderer.px.stage.removeChild(gltLink.pixiGraphics);
       gltLink.pixiGraphics.destroy();
     }
-    let colorKey = gltLink?.pixiText?.text?.replace(/\r?\n/g, "");
-    if (colorKey) {
-      // Nếu text là dạng [Impact], ta cần lấy chữ bên trong
-      if (colorKey.startsWith("[") && colorKey.endsWith("]")) {
-        colorKey = colorKey.substring(1, colorKey.length - 1);
-      }
-      colorKey = colorKey.toLowerCase(); // Chuẩn hóa
 
-      if (this.tagColors.has(colorKey)) {
-        const legendGraphic = this.tagColors.get(colorKey);
-        if (legendGraphic) {
-          legendGraphic.nUsing -= 1;
-          if (legendGraphic.nUsing < 1) {
-            this.yOffset -= this.lineHeight;
-            this.currentTagColorIndex -= 1;
-            if (this.currentTagColorIndex < 0)
-              this.currentTagColorIndex = this.categoricalColors.length - 1;
-            if (
-              legendGraphic.legendText &&
-              renderer.px &&
-              renderer.px.stage &&
-              renderer.px.stage.children &&
-              renderer.px.stage.children.includes(legendGraphic.legendText)
-            ) {
-              renderer.px.stage.removeChild(legendGraphic.legendText);
-              legendGraphic.legendText.destroy();
-            }
-            if (
-              legendGraphic.legendGraphics &&
-              renderer.px &&
-              renderer.px.stage &&
-              renderer.px.stage.children &&
-              renderer.px.stage.children.includes(legendGraphic.legendGraphics)
-            ) {
-              renderer.px.stage.removeChild(legendGraphic.legendGraphics);
-              legendGraphic.legendGraphics.destroy();
-            }
-            this.tagColors.delete(colorKey);
-          }
-        }
-      }
-    }
     this.linksMap.delete(key);
-    const reverseLink = this.linksMap.get(reverseKey);
-    if (reverseLink && reverseLink.pairStatus !== 0 /* None */) {
-      reverseLink.pairStatus = 0 /* None */;
-    }
   }
+
   removeLinks(renderer, currentLinks) {
     const currentKeys = new Set(
       currentLinks.map((link) =>
@@ -65963,69 +65919,80 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
     renderer.px.stage.addChild(text);
     return text;
   }
+  // === HÀM MỚI CHUYÊN DỤNG ĐỂ VẼ CHÚ THÍCH ===
+  updateLegend(renderer, uniqueTypes, tagLegend) {
+    // Reset lại vị trí Y để vẽ lại từ đầu
+    this.yOffset = 5;
+
+    // Hủy các đối tượng PixiJS của chú thích cũ
+    this.tagColors.forEach((legendGraphic) => {
+      if (legendGraphic.legendText) legendGraphic.legendText.destroy();
+      if (legendGraphic.legendGraphics) legendGraphic.legendGraphics.destroy();
+    });
+    this.tagColors.clear(); // Xóa sạch map màu cũ
+
+    // Nếu không cần hiển thị legend, dừng tại đây
+    if (!tagLegend) return;
+
+    // Sắp xếp các loại link theo alphabet để chú thích luôn ổn định
+    uniqueTypes.sort();
+
+    // Vẽ lại toàn bộ chú thích dựa trên danh sách các loại link duy nhất
+    uniqueTypes.forEach((type) => {
+      const colorKey = type.toLowerCase();
+      const color = this.categoricalColors[this.currentTagColorIndex];
+      this.currentTagColorIndex =
+        (this.currentTagColorIndex + 1) % this.categoricalColors.length;
+
+      const textL = new Text(type, {
+        fontFamily: "Arial",
+        fontSize: 14,
+        fill: color,
+      });
+      textL.x = this.xOffset;
+      textL.y = this.yOffset;
+      renderer.px.stage.addChild(textL);
+
+      const lineStartX =
+        this.xOffset + textL.width + this.spaceBetweenTextAndLine;
+      const graphicsL = new Graphics();
+      graphicsL.lineStyle(2, color, 1);
+      graphicsL.moveTo(lineStartX, this.yOffset + this.lineHeight / 2);
+      graphicsL.lineTo(
+        lineStartX + this.lineLength,
+        this.yOffset + this.lineHeight / 2
+      );
+      renderer.px.stage.addChild(graphicsL);
+
+      this.yOffset += this.lineHeight;
+
+      this.tagColors.set(colorKey, {
+        color: color,
+        legendText: textL,
+        legendGraphics: graphicsL,
+      });
+    });
+
+    // Reset lại index màu cho lần refresh tiếp theo
+    this.currentTagColorIndex = 0;
+  }
   // Create or update text for a given link
-  initializeLinkGraphics(renderer, link, linkType, tagLegend) {
-    if (linkType === null) {
-      return null;
-    }
-    let linkString = linkType;
-    // >>> NEW: Chuẩn hóa về chữ thường để làm key
-    const colorKey = linkString.toLowerCase();
+  initializeLinkGraphics(renderer, link, linkType) {
+    if (linkType === null) return null;
+    if (link.source.id === link.target.id) return null;
 
-    let color;
-    if (link.source.id === link.target.id) {
-      linkString = "";
-    } else {
-      if (!this.tagColors.has(colorKey)) {
-        color = this.categoricalColors[this.currentTagColorIndex];
-        this.currentTagColorIndex =
-          (this.currentTagColorIndex + 1) % this.categoricalColors.length;
+    const colorKey = linkType.toLowerCase();
 
-        const textL = new Text(linkString, {
-          fontFamily: "Arial",
-          fontSize: 14,
-          fill: color, //this.textColor, // @thanhnp: Màu của legend chữ sẽ giống link
-        });
-        textL.x = this.xOffset;
-        textL.y = this.yOffset;
-        renderer.px.stage.addChild(textL);
-        const lineStartX =
-          this.xOffset + textL.width + this.spaceBetweenTextAndLine;
-        const graphicsL = new Graphics();
-        graphicsL.lineStyle(2, color, 1);
-        graphicsL.moveTo(lineStartX, this.yOffset + this.lineHeight / 2);
-        graphicsL.lineTo(
-          lineStartX + this.lineLength,
-          this.yOffset + this.lineHeight / 2
-        );
-        renderer.px.stage.addChild(graphicsL);
-        this.yOffset += this.lineHeight;
-        if (!tagLegend) {
-          graphicsL.alpha = 0;
-          textL.alpha = 0;
-        }
-        const newLegendGraphic = {
-          color,
-          legendText: textL,
-          legendGraphics: graphicsL,
-          nUsing: 0,
-        };
-        this.tagColors.set(colorKey, newLegendGraphic);
-      } else {
-        const legendGraphic = this.tagColors.get(colorKey);
-        if (legendGraphic) {
-          color = legendGraphic == null ? void 0 : legendGraphic.color;
-          legendGraphic.nUsing += 1;
-        } else {
-          color = 16777215;
-        }
-      }
-    }
+    // Chỉ lấy màu từ tagColors đã được tạo bởi updateLegend
+    // Nếu chưa có màu, tạm dùng màu trắng (trường hợp hiếm)
+    const color = this.tagColors.get(colorKey)?.color ?? 16777215;
+
     const graphics = new Graphics();
     graphics.lineStyle(3 / Math.sqrt(renderer.nodeScale), color);
     graphics.zIndex = 0;
     renderer.px.stage.addChild(graphics);
-    this.updateLinkGraphics(renderer, link, linkType);
+
+    // updateLinkGraphics sẽ được gọi sau để vẽ đường link
     return graphics;
   }
   // Utility function to extract the file path from a Markdown link
@@ -66049,13 +66016,15 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
       return 4 /* Other */;
     }
   }
-  // Remove all text nodes from the graph
+  // === HÀM destroyMap GIỜ ĐÂY RẤT ĐƠN GIẢN ===
   destroyMap(renderer) {
     if (this.linksMap.size > 0) {
-      this.linksMap.forEach((gltLink, linkKey) => {
-        this.removeLink(renderer, gltLink.obsidianLink);
+      const linksToDestroy = Array.from(this.linksMap.values());
+      linksToDestroy.forEach((gltLink) => {
+        this.removeLink(renderer, gltLink);
       });
     }
+    // Không cần clear linksMap ở đây nữa vì removeLink đã làm
   }
   getAllLinkTypes(sourceId) {
     const sourcePage = this.api.page(sourceId);
@@ -66064,6 +66033,7 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
     const foundLinks = [];
 
     for (const [key, value] of Object.entries(sourcePage)) {
+      if (key === "file" || key === "inlinks" || key === "outlinks") continue;
       if (value === null || value === void 0 || value === "") {
         continue;
       }
@@ -66087,7 +66057,38 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
         processValue(value);
       }
     }
-    return foundLinks;
+
+    // --- LOGIC MỚI: LỌC BỎ CÁC LINK BỊ TRÙNG DO DATAVIEW ---
+    // Ưu tiên giữ lại key gốc (có dấu cách) và loại bỏ key chuẩn hóa (có gạch nối)
+    const uniqueLinks = foundLinks.filter((linkToTest) => {
+      // Nếu key không chứa gạch nối, nó chắc chắn là key gốc hoặc là key hợp lệ. Luôn giữ lại.
+      if (!linkToTest.type.includes("-")) {
+        return true;
+      }
+
+      // Nếu key có chứa gạch nối (ví dụ: "công-cụ"),
+      // hãy tạo ra phiên bản có dấu cách của nó ("công cụ").
+      const spaceVersionKey = linkToTest.type.replace(/-/g, " ");
+
+      // Bây giờ, kiểm tra xem trong danh sách TẤT CẢ các link tìm được,
+      // có cái nào trùng target VÀ có key là phiên bản dấu cách không.
+      const spaceVersionExists = foundLinks.some(
+        (otherLink) =>
+          otherLink.targetId === linkToTest.targetId &&
+          otherLink.type === spaceVersionKey
+      );
+
+      // Nếu phiên bản có dấu cách tồn tại (spaceVersionExists = true),
+      // thì link hiện tại (có gạch nối) là link thừa. Hãy loại bỏ nó (trả về false).
+      if (spaceVersionExists) {
+        return false;
+      }
+
+      // Nếu không, đây là một key hợp lệ thực sự chứa gạch nối (ví dụ: "Perfectionism-Impact"). Giữ lại nó.
+      return true;
+    });
+
+    return uniqueLinks;
   }
   // Get the metadata key for a link between two pages
   getMetadataKeyForLink(sourceId, targetId) {
@@ -66353,17 +66354,18 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
     const renderer = this.currentRenderer;
 
     // --- GIAI ĐOẠN 0: KIỂM TRA ĐIỀU KIỆN REFRESH CACHE ---
-    // Cache sẽ được làm mới nếu:
-    // 1. Cờ forceUpdate được bật (do metadata thay đổi).
-    // 2. Số lượng link trên đồ thị thay đổi (do người dùng thay đổi bộ lọc).
     if (this.forceUpdate || renderer.links.length !== this.lastLinkCount) {
       this.forceUpdate = false;
       this.lastLinkCount = renderer.links.length;
       console.log("Refreshing link cache...");
 
-      // --- GIAI ĐOẠN 1: XỬ LÝ NẶNG & TẠO CACHE ---
-      // Toàn bộ logic quét và nhóm link từ lần trước được chuyển vào đây.
+      // --- BƯỚC 1: DỌN SẠCH HOÀN TOÀN ---
+      // Gọi hàm destroyMap đã được sửa để xóa tất cả các đối tượng cũ
+      this.linkManager.destroyMap(renderer);
+
+      // --- BƯỚC 2: XỬ LÝ NẶNG & TẠO CACHE MỚI ---
       const newLinkGroups = new Map();
+
       for (const originalLink of renderer.links) {
         const sourceId = originalLink.source.id;
         const targetId = originalLink.target.id;
@@ -66371,7 +66373,6 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
         const relevantTypes = allMetadataLinks.filter(
           (metaLink) => metaLink.targetId === targetId
         );
-
         if (relevantTypes.length > 0) {
           const groupKey = [sourceId, targetId].sort().join("|");
           if (!newLinkGroups.has(groupKey)) {
@@ -66389,12 +66390,23 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
       }
       this.cachedLinkGroups = newLinkGroups;
 
-      // Xóa các link không còn tồn tại trong cache mới
-      this.linkManager.removeLinks(renderer, renderer.links);
+      // --- BƯỚC QUAN TRỌNG: TẠO VÀ CẬP NHẬT CHÚ THÍCH ---
+      // 1. Lấy ra danh sách các loại link duy nhất từ cache
+      const uniqueTypes = new Set();
+      for (const group of this.cachedLinkGroups.values()) {
+        for (const linkItem of group) {
+          uniqueTypes.add(linkItem.type);
+        }
+      }
+      // 2. Gọi hàm chuyên dụng để cập nhật lại toàn bộ chú thích
+      this.linkManager.updateLegend(
+        renderer,
+        Array.from(uniqueTypes),
+        this.settings.tagLegend
+      );
     }
 
-    // --- GIAI ĐOẠN 2: VẼ NHẸ NHÀNG TỪ CACHE ---
-    // Giai đoạn này chạy mỗi frame, nhưng chỉ dùng dữ liệu đã được xử lý sẵn.
+    // --- GIAI ĐOẠN 3: VẼ NHẸ NHÀNG TỪ CACHE ---
     if (!this.cachedLinkGroups) {
       this.animationFrameId = requestAnimationFrame(
         this.updatePositions.bind(this)
@@ -66402,13 +66414,14 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
       return;
     }
 
+    // Logic vẽ từ cache giữ nguyên như cũ
     for (const group of this.cachedLinkGroups.values()) {
       const totalLinks = group.length;
       group.forEach((linkItem, index) => {
         const { source, target, type, originalLink } = linkItem;
 
-        // Logic thêm link và vẽ giữ nguyên như cũ, vì nó phải cập nhật vị trí mỗi frame
         const key = this.linkManager.generateKey(source.id, target.id, type);
+        // Vì chúng ta đã destroyMap, nên addLink sẽ được gọi để tạo lại các đối tượng
         if (!this.linkManager.linksMap.has(key)) {
           this.linkManager.addLink(
             renderer,
