@@ -9,7 +9,8 @@ tags: ["#review"]
 # why
 
 Explain why anxiety of Freud's [[anxiety theory]]
-
+impact:: [[100_Philosophy and psychology/150_Psychology/Depression|Depression]]
+compare:: [[100_Philosophy and psychology/150_Psychology/Depression|Depression]]
 # influence factors
 
 - [[(Use of multiple SM platforms)-Impact-Anxiety]]

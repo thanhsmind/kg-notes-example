@@ -65426,10 +65426,13 @@ var LinkManager = class {
     // Thêm các biến này để theo dõi double-click
     this.lastClickTime = 0;
     this.lastClickTarget = null;
+
+    // NEW: Map để theo dõi nhóm các link giữa hai node để tính offset
+    this.linkGroups = new Map();
     this.detectThemeChange();
   }
-  generateKey(sourceId, targetId) {
-    return `${sourceId}-${targetId}`;
+  generateKey(sourceId, targetId, linkType) {
+    return `${sourceId}-${linkType}-${targetId}`;
   }
   detectThemeChange() {
     let lastTheme = "";
@@ -65489,22 +65492,31 @@ var LinkManager = class {
       return colorValue;
     }
   }
-  addLink(renderer, obLink, tagColors, tagLegend) {
-    const key = this.generateKey(obLink.source.id, obLink.target.id);
-    const reverseKey = this.generateKey(obLink.target.id, obLink.source.id);
+  addLink(renderer, obLink, linkType, tagColors, tagLegend) {
+    const key = this.generateKey(obLink.source.id, obLink.target.id, linkType);
+    // Nếu key đã tồn tại thì không cần thêm lại
+    if (this.linksMap.has(key)) return;
+
+    const reverseKey = this.generateKey(
+      obLink.target.id,
+      obLink.source.id,
+      linkType
+    );
     const pairStatus =
       obLink.source.id !== obLink.target.id && this.linksMap.has(reverseKey)
         ? 2 /* Second */
         : 0; /* None */
+
     const newLink = {
       obsidianLink: obLink,
+      linkType: linkType, // NEW: Lưu lại linkType
       pairStatus,
-      pixiText: this.initializeLinkText(renderer, obLink, pairStatus),
+      pixiText: this.initializeLinkText(renderer, obLink, linkType, pairStatus),
       pixiGraphics: tagColors
-        ? this.initializeLinkGraphics(renderer, obLink, tagLegend)
+        ? this.initializeLinkGraphics(renderer, obLink, linkType, tagLegend)
         : null,
     };
-    console.log(obLink);
+
     this.linksMap.set(key, newLink);
     if (
       obLink.source.id !== obLink.target.id &&
@@ -65516,9 +65528,9 @@ var LinkManager = class {
       }
     }
   }
-  removeLink(renderer, link) {
+  removeLink(renderer, link, linkType) {
     var _a2, _b;
-    const key = this.generateKey(link.source.id, link.target.id);
+    const key = this.generateKey(link.source.id, link.target.id, linkType);
     const reverseKey = this.generateKey(link.target.id, link.source.id);
     const gltLink = this.linksMap.get(key);
     if (
@@ -65611,13 +65623,16 @@ var LinkManager = class {
     return link ? link.pairStatus : 0 /* None */;
   }
   // Update the position of the text on the graph
-  updateLinkText(renderer, link, tagNames) {
+  // Update the position of the text on the graph
+  updateLinkText(renderer, link, tagNames, linkType, linkIndex, totalLinks) {
+    // <-- linkType được truyền vào đây
     if (!renderer || !link || !link.source || !link.target) {
       return;
     }
-    const linkKey = this.generateKey(link.source.id, link.target.id);
+    const linkKey = this.generateKey(link.source.id, link.target.id, linkType);
     const gltLink = this.linksMap.get(linkKey);
-    const metaText = this.getMetadataKeyForLink(link.source.id, link.target.id); // @thanhnp: lay metaText
+
+    // Dòng 'const metaText = ...' đã bị xóa, đó là nguyên nhân gây lỗi.
 
     let text;
     if (gltLink) {
@@ -65628,7 +65643,6 @@ var LinkManager = class {
     const midX = (link.source.x + link.target.x) / 2;
     const midY = (link.source.y + link.target.y) / 2;
 
-    // 2. Tính vector pháp tuyến (vuông góc) để xác định hướng đẩy ra
     const dx = link.target.x - link.source.x;
     const dy = link.target.y - link.source.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -65636,22 +65650,15 @@ var LinkManager = class {
     let finalX = midX;
     let finalY = midY;
 
-    // Chỉ tính toán khi 2 node không trùng nhau
     if (distance > 0) {
-      // Vector chỉ phương đơn vị
-      const nx = dx / distance;
-      const ny = dy / distance;
+      const perpX = -dy / distance;
+      const perpY = dx / distance;
 
-      // Vector pháp tuyến (vuông góc)
-      const perpX = -ny;
-      const perpY = nx;
+      const spacing = 15;
+      const groupOffset = (linkIndex - (totalLinks - 1) / 2) * spacing;
 
-      // 3. Đặt khoảng cách bạn muốn đẩy text ra khỏi đường link
-      const offsetDistance = 10; // ⬅️ Thay đổi giá trị này để điều chỉnh khoảng cách lệch // @thanhnp: thay đổi text giữa các link
-
-      // 4. Tính vị trí cuối cùng bằng cách cộng offset vào điểm giữa
-      finalX = midX + perpX * offsetDistance;
-      finalY = midY + perpY * offsetDistance;
+      finalX = midX + perpX * groupOffset;
+      finalY = midY + perpY * groupOffset;
     }
 
     const { x: x2, y: y2 } = this.getLinkToTextCoordinates(
@@ -65668,30 +65675,29 @@ var LinkManager = class {
       renderer.px.stage.children &&
       renderer.px.stage.children.includes(text)
     ) {
-      // === Xác định tên note và kiểm tra tồn tại ===
       const cleanedSourceId = link.source.text?._text || link.source.id;
       const cleanedTargetId = link.target.text?._text || link.target.id;
-      const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
+
+      // CHANGED: metaText -> linkType
+      const noteName = `(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})`;
       const file = app.metadataCache.getFirstLinkpathDest(noteName, "");
       const noteExists = !!file;
 
-      // === Cập nhật nội dung text ===
-      // Giữ nguyên text gốc (metaText)
-      let displayText = metaText;
+      // CHANGED: metaText -> linkType
+      let displayText = linkType;
 
-      // Nếu note đã tồn tại, thêm "- noted" vào sau
       if (noteExists) {
-        displayText = `[${metaText}]`;
+        // CHANGED: metaText -> linkType
+        displayText = `[${linkType}]`;
       }
 
-      // Gán nội dung mới cho Pixi Text
       text.text = displayText;
-
       text.x = x2;
       text.y = y2;
       text.scale.set(1 / (3 * renderer.nodeScale));
-      //text.style.fill = this.textColor;  // @thanhnp: màu default
-      text.style.fill = this.tagColors.get(metaText)?.color ?? this.textColor; // @thanhnp: sửa lại tên của link edge cho cùng màu với link
+
+      // CHANGED: metaText -> linkType
+      text.style.fill = this.tagColors.get(linkType)?.color ?? this.textColor;
       if (tagNames) {
         if (
           !link.source ||
@@ -65709,115 +65715,82 @@ var LinkManager = class {
         text.alpha = 0;
       }
 
-      // ===================================================================
-      // THAY ĐỔI BẮT ĐẦU: Thêm tương tác click để tạo note Obsidian
-      // @thanhnp: thêm click sự kiện
-      // ===================================================================
-
-      // 1. Kích hoạt tương tác cho đối tượng text
       text.interactive = true;
-      text.buttonMode = true; // Biến con trỏ thành hình bàn tay khi di chuột vào
+      text.buttonMode = true;
 
-      // 2. Xóa listener cũ để tránh việc thêm nhiều lần khi hàm được gọi liên tục
       text.off("pointertap");
       text.off("pointerover");
       text.off("pointerout");
 
-      // Khi rê vào text: đổi cursor thành pointer
       text.on("pointerover", () => {
         renderer.interactiveEl.style.cursor = "pointer";
       });
 
-      // Khi rời khỏi text: trả lại cursor
       text.on("pointerout", () => {
         renderer.interactiveEl.style.cursor = "default";
       });
-      // 3. Thêm sự kiện 'pointertap' (tương đương click)
-      // @thanhnp: thêm sự kiện dblclick
-      // Lưu ý: Hàm callback giờ là một hàm "async"
-      text.on("pointertap", async () => {
+
+      text.on("pointertap", async (event) => {
+        // Thêm event vào đây
         try {
-          const doubleClickSpeed = 300; // Thời gian tối đa giữa 2 cú click (300ms)
+          const doubleClickSpeed = 300;
           const currentTime = Date.now();
 
-          // Kiểm tra xem cú click này có phải là double-click không
           if (
             currentTime - this.lastClickTime < doubleClickSpeed &&
-            this.lastClickTarget === event.currentTarget // event.currentTarget là đối tượng được click (text)
+            this.lastClickTarget === event.currentTarget
           ) {
-            // --- ĐÂY LÀ DOUBLE-CLICK ---
-            console.log("Double-click detected!");
-
-            // Reset trạng thái để tránh click lần thứ 3 cũng bị tính
             this.lastClickTime = 0;
             this.lastClickTarget = null;
 
-            // Chạy logic async của bạn ở đây
-            // Dùng một hàm ẩn danh async để không block luồng chính
             (async () => {
               try {
                 const cleanedSourceId = link.source.text._text;
                 const cleanedTargetId = link.target.text._text;
-                const noteName = `(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})`;
 
-                // --- DÙNG API ĐỂ TÌM FILE MÀ KHÔNG CẦN BIẾT ĐƯỜNG DẪN ---
+                // CHANGED: metaText -> linkType
+                const noteName = `(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})`;
 
-                // 1. Dùng metadataCache để tìm file. Hàm này không cần đuôi .md
-                // và linh hoạt hơn với các đường dẫn.
                 const file = app.metadataCache.getFirstLinkpathDest(
                   noteName,
                   ""
-                ); // "" nghĩa là tìm trong toàn bộ vault
+                );
 
-                // 2. Kiểm tra xem file có thực sự tồn tại không
                 if (file) {
-                  // NẾU FILE TỒN TẠI: Mở nó bằng đường dẫn chính xác của nó
-                  console.log(`Note exists at path: ${file.path}. Opening it.`);
-                  // file.path sẽ luôn là đường dẫn đúng, dù người dùng đã di chuyển file
                   await app.workspace.openLinkText(file.path, "", false);
                 } else {
-                  // --- LOGIC XÁC ĐỊNH THƯ MỤC TẠO FILE ---
                   let creationPath;
                   const defaultLocation =
                     app.vault.getConfig("newFileLocation");
 
                   if (defaultLocation === "current") {
-                    // Lấy folder của note nguồn (source)
                     const sourceFile = app.vault.getAbstractFileByPath(
                       link.source.id
                     );
-
-                    // Kiểm tra xem sourceFile và thư mục cha của nó có tồn tại không
                     if (sourceFile && sourceFile.parent) {
                       const parentFolder = sourceFile.parent;
-                      // Nếu thư mục cha là thư mục gốc, không cần thêm phần đường dẫn
                       if (parentFolder.isRoot()) {
                         creationPath = `${noteName}.md`;
                       } else {
                         creationPath = `${parentFolder.path}/${noteName}.md`;
                       }
                     } else {
-                      // Trường hợp dự phòng: nếu không tìm thấy file nguồn, tạo ở thư mục gốc
                       creationPath = `${noteName}.md`;
                     }
                   } else if (defaultLocation === "folder") {
-                    // Lấy folder được chỉ định trong cài đặt
                     const folderPath = app.vault.getConfig("newFileFolderPath");
                     creationPath = `${folderPath}/${noteName}.md`;
                   } else {
-                    // Mặc định là thư mục gốc (root)
                     creationPath = `${noteName}.md`;
                   }
-                  // --- KẾT THÚC LOGIC XÁC ĐỊNH THƯ MỤC ---
 
-                  console.log(`Creating new note at: ${creationPath}`);
-
+                  // CHANGED: metaText -> linkType
                   const noteContent = `---
 type: relation
 tag: relation
 ---
-# [[${cleanedSourceId}]] -${metaText}- [[${cleanedTargetId}]]
-Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
+# [[${cleanedSourceId}]] -${linkType}- [[${cleanedTargetId}]]
+Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
 `;
                   const newFile = await app.vault.create(
                     creationPath,
@@ -65830,8 +65803,6 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
               }
             })();
           } else {
-            // --- ĐÂY LÀ SINGLE-CLICK ---
-            // Cập nhật lại trạng thái cho cú click đầu tiên
             this.lastClickTime = currentTime;
             this.lastClickTarget = event.currentTarget;
           }
@@ -65841,35 +65812,46 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
       });
     }
   }
+
   // Update the position of the text on the graph
-  updateLinkGraphics(renderer, link) {
+  updateLinkGraphics(renderer, link, linkType, linkIndex, totalLinks) {
     if (!renderer || !link || !link.source || !link.target) {
       return;
     }
-    const linkKey = this.generateKey(link.source.id, link.target.id);
+    // Tạo key chính xác với linkType
+    const linkKey = this.generateKey(link.source.id, link.target.id, linkType);
     const gltLink = this.linksMap.get(linkKey);
-    let graphics;
-    if (gltLink) {
-      graphics = gltLink.pixiGraphics;
-    } else {
+
+    if (!gltLink || !gltLink.pixiGraphics) {
       return;
     }
-    let { nx, ny } = this.calculateNormal(
-      link.source.x,
-      link.source.y,
-      link.target.x,
-      link.target.y
-    );
-    let { px, py } = this.calculateParallel(
-      link.source.x,
-      link.source.y,
-      link.target.x,
-      link.target.y
-    );
-    nx *= 1.5 * Math.sqrt(renderer.scale);
-    ny *= 1.5 * Math.sqrt(renderer.scale);
-    px *= 8 * Math.sqrt(renderer.scale);
-    py *= 8 * Math.sqrt(renderer.scale);
+    const graphics = gltLink.pixiGraphics;
+
+    // --- LOGIC TÍNH TOÁN VỊ TRÍ ---
+    // (Phần này được sao chép từ updateLinkText để đảm bảo tính nhất quán)
+    const midX_logic = (link.source.x + link.target.x) / 2;
+    const midY_logic = (link.source.y + link.target.y) / 2;
+    const dx_logic = link.target.x - link.source.x;
+    const dy_logic = link.target.y - link.source.y;
+    const distance_logic = Math.sqrt(dx_logic * dx_logic + dy_logic * dy_logic);
+
+    let finalX_logic = midX_logic;
+    let finalY_logic = midY_logic;
+
+    // Tính toán offset để các đường link song song với nhau
+    if (distance_logic > 0) {
+      const perpX_logic = -dy_logic / distance_logic;
+      const perpY_logic = dx_logic / distance_logic;
+
+      // Điều chỉnh khoảng cách giữa các đường kẻ
+      const spacing = 6 * Math.sqrt(renderer.scale);
+      const groupOffset = (linkIndex - (totalLinks - 1) / 2) * spacing;
+
+      finalX_logic = midX_logic + perpX_logic * groupOffset;
+      finalY_logic = midY_logic + perpY_logic * groupOffset;
+    }
+
+    // Chuyển đổi tọa độ logic sang tọa độ màn hình
     let { x: x1, y: y1 } = this.getLinkToTextCoordinates(
       link.source.x,
       link.source.y,
@@ -65884,82 +65866,65 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
       renderer.panY,
       renderer.scale
     );
-    x1 += nx + (link.source.weight / 36 + 1) * px;
-    x2 += nx - (link.target.weight / 36 + 1) * px;
-    y1 += ny + (link.source.weight / 36 + 1) * py;
-    y2 += ny - (link.target.weight / 36 + 1) * py;
+    let { x: finalX_canvas, y: finalY_canvas } = this.getLinkToTextCoordinates(
+      finalX_logic,
+      finalY_logic,
+      renderer.panX,
+      renderer.panY,
+      renderer.scale
+    );
+
+    // Vector từ điểm giữa gốc đến điểm giữa đã có offset
+    const offsetX = finalX_canvas - (x1 + x2) / 2;
+    const offsetY = finalY_canvas - (y1 + y2) / 2;
+
+    // Áp dụng offset cho điểm đầu và điểm cuối
+    x1 += offsetX;
+    y1 += offsetY;
+    x2 += offsetX;
+    y2 += offsetY;
+
+    // --- LOGIC VẼ ĐỒ HỌA ---
     if (
-      graphics &&
       renderer.px &&
       renderer.px.stage &&
-      renderer.px.stage.children &&
       renderer.px.stage.children.includes(graphics)
     ) {
       const color = graphics._lineStyle.color;
       graphics.clear();
-      graphics.lineStyle(3 / Math.sqrt(renderer.nodeScale), color);
-      graphics.alpha = 0.6;
+      graphics.lineStyle(2.5 / Math.sqrt(renderer.nodeScale), color); // Tăng độ dày một chút
+      graphics.alpha = 0.8; // Tăng độ rõ nét
       graphics.moveTo(x1, y1);
 
-      let controlPoint = null;
-
-      // --- KIỂM TRA VÀ VẼ CONG HOẶC THẲNG ---
       if (link.isCurved) {
-        // NẾU LÀ LINK CẦN VẼ CONG
-
-        // 1. Tìm điểm giữa của đoạn thẳng
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
-
-        // 2. Tìm vector pháp tuyến (vuông góc) để đẩy điểm kiểm soát ra
         const dx = x2 - x1;
         const dy = y2 - y1;
         const distance = Math.sqrt(dx * dx + dy * dy);
-
         const perpX = -dy / distance;
         const perpY = dx / distance;
-
-        // 3. Đặt độ cong (khoảng cách đẩy điểm kiểm soát ra)
-        const curveAmount = 25 * Math.sqrt(renderer.scale); // ⬅️ Tăng/giảm giá trị này để điều chỉnh độ cong
-
-        // 4. Tính tọa độ điểm kiểm soát (control point)
+        const curveAmount = 30 * Math.sqrt(renderer.scale);
         const cpX = midX + perpX * curveAmount;
         const cpY = midY + perpY * curveAmount;
-
-        // 5. Vẽ đường cong
         graphics.quadraticCurveTo(cpX, cpY, x2, y2);
       } else {
-        // NẾU LÀ LINK THẲNG NHƯ BÌNH THƯỜNG
         graphics.lineTo(x2, y2);
       }
-      // --- Logic vẽ mũi tên giờ sẽ hoạt động chính xác ---
-      let dirX, dirY;
-      if (controlPoint) {
-        // Nếu là đường cong, hướng sẽ là từ control point tới điểm cuối
-        dirX = x2 - controlPoint.x;
-        dirY = y2 - controlPoint.y;
-      } else {
-        // Nếu là đường thẳng, hướng là từ điểm đầu tới điểm cuối
-        dirX = x2 - x1;
-        dirY = y2 - y1;
-      }
 
-      // ... (phần còn lại của logic vẽ mũi tên giữ nguyên)
+      // ... (Phần logic vẽ mũi tên giữ nguyên)
+      const dirX = x2 - x1; // Hướng đơn giản cho mũi tên
+      const dirY = y2 - y1;
       const len = Math.sqrt(dirX * dirX + dirY * dirY);
       if (len > 0) {
-        // Thêm kiểm tra để tránh lỗi chia cho 0
-        dirX /= len;
-        dirY /= len;
-
-        const arrowLength = 10;
-        const arrowHalfWidth = 5;
-
-        const baseX = x2 - dirX * arrowLength;
-        const baseY = y2 - dirY * arrowLength;
-
-        const perpX = -dirY;
-        const perpY = dirX;
-
+        const normalizedDirX = dirX / len;
+        const normalizedDirY = dirY / len;
+        const arrowLength = 8 * Math.sqrt(renderer.nodeScale);
+        const arrowHalfWidth = 4 * Math.sqrt(renderer.nodeScale);
+        const baseX = x2 - normalizedDirX * arrowLength;
+        const baseY = y2 - normalizedDirY * arrowLength;
+        const perpX = -normalizedDirY;
+        const perpY = normalizedDirX;
         const wing1X = baseX + perpX * arrowHalfWidth;
         const wing1Y = baseY + perpY * arrowHalfWidth;
         const wing2X = baseX - perpX * arrowHalfWidth;
@@ -65975,11 +65940,11 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
     }
   }
   // Create or update text for a given link
-  initializeLinkText(renderer, link, pairStatus) {
-    let linkString = this.getMetadataKeyForLink(link.source.id, link.target.id);
-    if (linkString === null) {
+  initializeLinkText(renderer, link, linkType, pairStatus) {
+    if (linkType === null) {
       return null;
     }
+    let linkString = linkType;
     if (link.source.id === link.target.id) {
       linkString = "";
     }
@@ -66003,11 +65968,11 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
     return text;
   }
   // Create or update text for a given link
-  initializeLinkGraphics(renderer, link, tagLegend) {
-    let linkString = this.getMetadataKeyForLink(link.source.id, link.target.id);
-    if (linkString === null) {
+  initializeLinkGraphics(renderer, link, linkType, tagLegend) {
+    if (linkType === null) {
       return null;
     }
+    let linkString = linkType;
     let color;
     if (link.source.id === link.target.id) {
       linkString = "";
@@ -66060,7 +66025,7 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
     graphics.lineStyle(3 / Math.sqrt(renderer.nodeScale), color);
     graphics.zIndex = 0;
     renderer.px.stage.addChild(graphics);
-    this.updateLinkGraphics(renderer, link);
+    this.updateLinkGraphics(renderer, link, linkType);
     return graphics;
   }
   // Utility function to extract the file path from a Markdown link
@@ -66091,6 +66056,38 @@ Source [[(${cleanedSourceId}) -${metaText}- (${cleanedTargetId})]]
         this.removeLink(renderer, gltLink.obsidianLink);
       });
     }
+  }
+  getAllLinkTypes(sourceId) {
+    const sourcePage = this.api.page(sourceId);
+    if (!sourcePage) return [];
+
+    const foundLinks = [];
+
+    for (const [key, value] of Object.entries(sourcePage)) {
+      if (value === null || value === void 0 || value === "") {
+        continue;
+      }
+
+      const processValue = (item) => {
+        const valueType = this.determineDataviewLinkType(item);
+        if (valueType === 0 /* WikiLink */ && item.path) {
+          foundLinks.push({ type: key, targetId: item.path });
+        } else if (valueType === 1 /* MarkdownLink */) {
+          const targetId = this.extractPathFromMarkdownLink(item);
+          if (targetId) {
+            foundLinks.push({ type: key, targetId: targetId });
+          }
+        }
+      };
+
+      const valueType = this.determineDataviewLinkType(value);
+      if (valueType === 3 /* Array */) {
+        value.forEach(processValue);
+      } else {
+        processValue(value);
+      }
+    }
+    return foundLinks;
   }
   // Get the metadata key for a link between two pages
   getMetadataKeyForLink(sourceId, targetId) {
@@ -66325,67 +66322,109 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
     requestAnimationFrame(this.updatePositions.bind(this));
   }
   // Function to continuously update the positions of text objects.
+  // Trong lớp GraphLinkTypesPlugin
+
   updatePositions() {
     if (!this.currentRenderer) {
+      const now = Date.now();
+      if (now - this.lastRendererCheck > 2000) {
+        this.lastRendererCheck = now;
+        this.checkAndUpdateRenderer();
+      }
+      this.animationFrameId = requestAnimationFrame(
+        this.updatePositions.bind(this)
+      );
       return;
     }
+
     const renderer = this.currentRenderer;
-    // --- BẮT ĐẦU LOGIC XỬ LÝ LINK HAI CHIỀU ---
-    // @thanhnp vẽ cong
-
-    // 1. Nhóm các link lại bằng key chuẩn hóa
-    const linkGroups = new Map();
-    renderer.links.forEach((link) => {
-      // Reset lại trạng thái isCurved cho mỗi lần cập nhật
-      link.isCurved = false;
-
-      const canonicalKey = this.generateCanonicalKey(
-        link.source.id,
-        link.target.id
-      );
-      if (!linkGroups.has(canonicalKey)) {
-        linkGroups.set(canonicalKey, []);
-      }
-      linkGroups.get(canonicalKey).push(link);
-    });
-
-    // 2. Duyệt qua các nhóm và đánh dấu link cần vẽ cong
-    for (const group of linkGroups.values()) {
-      // Nếu một nhóm có 2 link, đó là cặp hai chiều
-      if (group.length === 2) {
-        // Đánh dấu link thứ hai trong cặp để vẽ cong
-        // (Bạn có thể chọn bất kỳ logic nào, miễn là nhất quán)
-        group[1].isCurved = true;
-      }
-    }
-    // --- KẾT THÚC LOGIC XỬ LÝ ---
-
-    let updateMap = false;
-
-    if (this.animationFrameId && this.animationFrameId % 10 == 0) {
-      updateMap = true;
+    // --- CẢI THIỆN LOGIC XÓA LINK ---
+    // Chỉ kiểm tra và xóa link cũ sau mỗi 1 giây (60 frames) để tối ưu hiệu năng
+    if (this.animationFrameId && this.animationFrameId % 60 === 0) {
       this.linkManager.removeLinks(renderer, renderer.links);
     }
-    renderer.links.forEach((link) => {
-      if (updateMap) {
-        const key = this.linkManager.generateKey(
-          link.source.id,
-          link.target.id
-        );
-        if (!this.linkManager.linksMap.has(key)) {
-          this.linkManager.addLink(
-            renderer,
-            link,
-            this.settings.tagColors,
-            this.settings.tagLegend
-          );
+
+    const linkGroups = new Map();
+
+    renderer.nodes.forEach((sourceNode) => {
+      const sourceId = sourceNode.id;
+      const allOutgoingLinks = this.linkManager.getAllLinkTypes(sourceId);
+
+      allOutgoingLinks.forEach((linkInfo) => {
+        const { type, targetId } = linkInfo;
+        const targetNode = renderer.nodes.find((n) => n.id === targetId);
+
+        if (!sourceNode || !targetNode) return;
+
+        const groupKey = [sourceId, targetId].sort().join("|");
+        if (!linkGroups.has(groupKey)) {
+          linkGroups.set(groupKey, []);
         }
-      }
-      this.linkManager.updateLinkText(renderer, link, this.settings.tagNames);
-      if (this.settings.tagColors) {
-        this.linkManager.updateLinkGraphics(renderer, link);
-      }
+
+        linkGroups.get(groupKey).push({
+          source: sourceNode,
+          target: targetNode,
+          type: type,
+          // Tìm link gốc của Obsidian. Nó có thể không tồn tại.
+          originalLink: renderer.links.find(
+            (l) => l.source.id === sourceId && l.target.id === targetId
+          ),
+        });
+      });
     });
+
+    if (this.animationFrameId && this.animationFrameId % 20 == 0) {
+      this.linkManager.destroyMap(renderer);
+    }
+
+    linkGroups.forEach((group) => {
+      const totalLinks = group.length;
+      group.forEach((linkItem, index) => {
+        const { source, target, type, originalLink } = linkItem;
+
+        if (originalLink) {
+          const key = this.linkManager.generateKey(source.id, target.id, type);
+          if (!this.linkManager.linksMap.has(key)) {
+            this.linkManager.addLink(
+              renderer,
+              originalLink,
+              type,
+              this.settings.tagColors,
+              this.settings.tagLegend
+            );
+          }
+
+          this.linkManager.updateLinkText(
+            renderer,
+            originalLink,
+            this.settings.tagNames,
+            type,
+            index,
+            totalLinks
+          );
+
+          if (this.settings.tagColors) {
+            const isBidirectional = group.some(
+              (other) =>
+                other.source.id === target.id && other.target.id === source.id
+            );
+            originalLink.isCurved = isBidirectional && source.id > target.id;
+
+            // ==========================================================
+            // >>> GỌI HÀM ĐÚNG VỚI ĐỦ 4 THAM SỐ <<<
+            this.linkManager.updateLinkGraphics(
+              renderer,
+              originalLink,
+              type,
+              index,
+              totalLinks
+            );
+            // ==========================================================
+          }
+        }
+      });
+    });
+
     this.animationFrameId = requestAnimationFrame(
       this.updatePositions.bind(this)
     );
