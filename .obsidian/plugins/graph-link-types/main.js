@@ -65772,6 +65772,8 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
   }
   // Trong lớp LinkManager
 
+  // Trong lớp LinkManager
+
   updateLinkGraphics(renderer, link, linkType, linkIndex, totalLinks) {
     if (!renderer || !link || !link.source || !link.target) {
       return;
@@ -65784,7 +65786,7 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
     }
     const graphics = gltLink.pixiGraphics;
 
-    // --- BƯỚC 1: LẤY TỌA ĐỘ TÂM VÀ TÍNH TOÁN VECTOR ---
+    // Các bước tính toán tọa độ điểm đầu và cuối không đổi
     let { x: centerX1, y: centerY1 } = this.getLinkToTextCoordinates(
       link.source.x,
       link.source.y,
@@ -65799,28 +65801,20 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
       renderer.panY,
       renderer.scale
     );
-
     const dx = centerX2 - centerX1;
     const dy = centerY2 - centerY1;
     const distance = Math.sqrt(dx * dx + dy * dy);
     if (distance === 0) return;
-
     const dirX = dx / distance;
     const dirY = dy / distance;
-
-    // --- BƯỚC 2: TÍNH OFFSET ĐẨY GỐC LINK RA VIỀN NODE ---
     const nodeSizeScaler = 8 * Math.sqrt(renderer.scale);
     const sourceRadiusOffset = (link.source.weight / 30 + 1) * nodeSizeScaler;
     const targetRadiusOffset = (link.target.weight / 30 + 1) * nodeSizeScaler;
-
-    // --- BƯỚC 3: TÍNH TỌA ĐỘ ĐIỂM ĐẦU VÀ CUỐI (KHÔNG CÒN OFFSET SONG SONG) ---
-    // Tất cả các link giờ sẽ cùng chung điểm đầu và điểm cuối này.
     let x1 = centerX1 + dirX * sourceRadiusOffset;
     let y1 = centerY1 + dirY * sourceRadiusOffset;
     let x2 = centerX2 - dirX * targetRadiusOffset;
     let y2 = centerY2 - dirY * targetRadiusOffset;
 
-    // --- BƯỚC 4: VẼ ĐỒ HỌA VỚI ĐỘ CONG BIẾN THIÊN ---
     if (
       renderer.px &&
       renderer.px.stage &&
@@ -65832,62 +65826,71 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
       graphics.alpha = 0.9;
       graphics.moveTo(x1, y1);
 
-      let cpX, cpY; // Control point cho đường cong
-
-      // --- THAY ĐỔI LỚN: LOGIC ĐỘ CONG BIẾN THIÊN ---
-      // Độ cong cơ bản, bạn có thể chỉnh giá trị 40 này để tăng/giảm độ cong chung
+      let cpX, cpY;
       const baseCurveAmount = 40;
-
-      // Tính độ cong cho từng link một cách đối xứng
-      // Link ở giữa sẽ thẳng (offset = 0), các link khác cong dần ra hai bên
       const curveIndexOffset = linkIndex - (totalLinks - 1) / 2;
       const dynamicCurveAmount =
         curveIndexOffset * baseCurveAmount * Math.sqrt(renderer.scale);
 
-      // Chỉ vẽ cong nếu độ cong khác 0 (link không phải là link ở giữa)
       if (dynamicCurveAmount !== 0) {
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
-        const perpX = -dirY; // Vector pháp tuyến để đẩy control point
+        const perpX = -dirY;
         const perpY = dirX;
-
         cpX = midX + perpX * dynamicCurveAmount;
         cpY = midY + perpY * dynamicCurveAmount;
         graphics.quadraticCurveTo(cpX, cpY, x2, y2);
       } else {
-        // Nếu là link ở giữa (hoặc chỉ có 1 link), vẽ đường thẳng
         graphics.lineTo(x2, y2);
       }
 
-      // --- BƯỚC 5: VẼ MŨI TÊN (LOGIC GIỮ NGUYÊN) ---
+      // --- BƯỚC 6: VẼ MŨI TÊN (ĐÃ SỬA LỖI LOGIC) ---
       let arrowDirX, arrowDirY;
+
       if (dynamicCurveAmount !== 0) {
         arrowDirX = x2 - cpX;
         arrowDirY = y2 - cpY;
       } else {
         arrowDirX = x2 - x1;
+        // <<< DÒNG BỊ THIẾU ĐÃ ĐƯỢC THÊM VÀO ĐÂY
+        arrowDirY = y2 - y1;
       }
-      // ... (phần còn lại của logic vẽ mũi tên giữ nguyên như cũ)
+
       const len = Math.sqrt(arrowDirX * arrowDirX + arrowDirY * arrowDirY);
-      if (len > 0) {
+      // Kiểm tra len hợp lệ (không phải NaN và > 0)
+      if (len && len > 0) {
         arrowDirX /= len;
         arrowDirY /= len;
-        const arrowLength = 9 * Math.sqrt(renderer.nodeScale);
-        const arrowHalfWidth = 4.5 * Math.sqrt(renderer.nodeScale);
-        const baseX = x2 - arrowDirX * arrowLength;
-        const baseY = y2 - arrowDirY * arrowLength;
-        const arrowPerpX = -arrowDirY;
-        const arrowPerpY = arrowDirX;
-        const wing1X = baseX + arrowPerpX * arrowHalfWidth;
-        const wing1Y = baseY + arrowPerpY * arrowHalfWidth;
-        const wing2X = baseX - arrowPerpX * arrowHalfWidth;
-        const wing2Y = baseY - arrowPerpY * arrowHalfWidth;
-        graphics.beginFill(color);
-        graphics.moveTo(x2, y2);
-        graphics.lineTo(wing1X, wing1Y);
+
+        const arrowLength = 10 * Math.sqrt(renderer.nodeScale);
+        const arrowAngle = Math.PI / 6; // 30 độ
+
+        // Công thức xoay vector để tạo 2 cánh mũi tên
+        const wing1X =
+          x2 -
+          arrowLength *
+            (arrowDirX * Math.cos(arrowAngle) -
+              arrowDirY * Math.sin(arrowAngle));
+        const wing1Y =
+          y2 -
+          arrowLength *
+            (arrowDirY * Math.cos(arrowAngle) +
+              arrowDirX * Math.sin(arrowAngle));
+
+        const wing2X =
+          x2 -
+          arrowLength *
+            (arrowDirX * Math.cos(-arrowAngle) -
+              arrowDirY * Math.sin(-arrowAngle));
+        const wing2Y =
+          y2 -
+          arrowLength *
+            (arrowDirY * Math.cos(-arrowAngle) +
+              arrowDirX * Math.sin(-arrowAngle));
+
+        graphics.moveTo(wing1X, wing1Y);
+        graphics.lineTo(x2, y2);
         graphics.lineTo(wing2X, wing2Y);
-        graphics.closePath();
-        graphics.endFill();
       }
     }
   }
