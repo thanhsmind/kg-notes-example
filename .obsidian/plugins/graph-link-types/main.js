@@ -65555,14 +65555,14 @@ var LinkManager = class {
       renderer.px.stage.removeChild(gltLink.pixiGraphics);
       gltLink.pixiGraphics.destroy();
     }
-    let colorKey =
-      (_b =
-        (_a2 = gltLink == null ? void 0 : gltLink.pixiText) == null
-          ? void 0
-          : _a2.text) == null
-        ? void 0
-        : _b.replace(/\r?\n/g, "");
+    let colorKey = gltLink?.pixiText?.text?.replace(/\r?\n/g, "");
     if (colorKey) {
+      // Nếu text là dạng [Impact], ta cần lấy chữ bên trong
+      if (colorKey.startsWith("[") && colorKey.endsWith("]")) {
+        colorKey = colorKey.substring(1, colorKey.length - 1);
+      }
+      colorKey = colorKey.toLowerCase(); // Chuẩn hóa
+
       if (this.tagColors.has(colorKey)) {
         const legendGraphic = this.tagColors.get(colorKey);
         if (legendGraphic) {
@@ -65654,7 +65654,8 @@ var LinkManager = class {
       const perpX = -dy / distance;
       const perpY = dx / distance;
 
-      const spacing = 15;
+      // >>> CHANGED: Tăng giá trị spacing từ 15 lên ví dụ 25
+      const spacing = 25;
       const groupOffset = (linkIndex - (totalLinks - 1) / 2) * spacing;
 
       finalX = midX + perpX * groupOffset;
@@ -65697,7 +65698,8 @@ var LinkManager = class {
       text.scale.set(1 / (3 * renderer.nodeScale));
 
       // CHANGED: metaText -> linkType
-      text.style.fill = this.tagColors.get(linkType)?.color ?? this.textColor;
+      text.style.fill =
+        this.tagColors.get(linkType.toLowerCase())?.color ?? this.textColor;
       if (tagNames) {
         if (
           !link.source ||
@@ -65812,13 +65814,12 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
       });
     }
   }
+  // Trong lớp LinkManager
 
-  // Update the position of the text on the graph
   updateLinkGraphics(renderer, link, linkType, linkIndex, totalLinks) {
     if (!renderer || !link || !link.source || !link.target) {
       return;
     }
-    // Tạo key chính xác với linkType
     const linkKey = this.generateKey(link.source.id, link.target.id, linkType);
     const gltLink = this.linksMap.get(linkKey);
 
@@ -65827,64 +65828,43 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
     }
     const graphics = gltLink.pixiGraphics;
 
-    // --- LOGIC TÍNH TOÁN VỊ TRÍ ---
-    // (Phần này được sao chép từ updateLinkText để đảm bảo tính nhất quán)
-    const midX_logic = (link.source.x + link.target.x) / 2;
-    const midY_logic = (link.source.y + link.target.y) / 2;
-    const dx_logic = link.target.x - link.source.x;
-    const dy_logic = link.target.y - link.source.y;
-    const distance_logic = Math.sqrt(dx_logic * dx_logic + dy_logic * dy_logic);
-
-    let finalX_logic = midX_logic;
-    let finalY_logic = midY_logic;
-
-    // Tính toán offset để các đường link song song với nhau
-    if (distance_logic > 0) {
-      const perpX_logic = -dy_logic / distance_logic;
-      const perpY_logic = dx_logic / distance_logic;
-
-      // Điều chỉnh khoảng cách giữa các đường kẻ
-      const spacing = 6 * Math.sqrt(renderer.scale);
-      const groupOffset = (linkIndex - (totalLinks - 1) / 2) * spacing;
-
-      finalX_logic = midX_logic + perpX_logic * groupOffset;
-      finalY_logic = midY_logic + perpY_logic * groupOffset;
-    }
-
-    // Chuyển đổi tọa độ logic sang tọa độ màn hình
-    let { x: x1, y: y1 } = this.getLinkToTextCoordinates(
+    // --- BƯỚC 1: LẤY TỌA ĐỘ TÂM VÀ TÍNH TOÁN VECTOR ---
+    let { x: centerX1, y: centerY1 } = this.getLinkToTextCoordinates(
       link.source.x,
       link.source.y,
       renderer.panX,
       renderer.panY,
       renderer.scale
     );
-    let { x: x2, y: y2 } = this.getLinkToTextCoordinates(
+    let { x: centerX2, y: centerY2 } = this.getLinkToTextCoordinates(
       link.target.x,
       link.target.y,
       renderer.panX,
       renderer.panY,
       renderer.scale
     );
-    let { x: finalX_canvas, y: finalY_canvas } = this.getLinkToTextCoordinates(
-      finalX_logic,
-      finalY_logic,
-      renderer.panX,
-      renderer.panY,
-      renderer.scale
-    );
 
-    // Vector từ điểm giữa gốc đến điểm giữa đã có offset
-    const offsetX = finalX_canvas - (x1 + x2) / 2;
-    const offsetY = finalY_canvas - (y1 + y2) / 2;
+    const dx = centerX2 - centerX1;
+    const dy = centerY2 - centerY1;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance === 0) return;
 
-    // Áp dụng offset cho điểm đầu và điểm cuối
-    x1 += offsetX;
-    y1 += offsetY;
-    x2 += offsetX;
-    y2 += offsetY;
+    const dirX = dx / distance;
+    const dirY = dy / distance;
 
-    // --- LOGIC VẼ ĐỒ HỌA ---
+    // --- BƯỚC 2: TÍNH OFFSET ĐẨY GỐC LINK RA VIỀN NODE ---
+    const nodeSizeScaler = 8 * Math.sqrt(renderer.scale);
+    const sourceRadiusOffset = (link.source.weight / 30 + 1) * nodeSizeScaler;
+    const targetRadiusOffset = (link.target.weight / 30 + 1) * nodeSizeScaler;
+
+    // --- BƯỚC 3: TÍNH TỌA ĐỘ ĐIỂM ĐẦU VÀ CUỐI (KHÔNG CÒN OFFSET SONG SONG) ---
+    // Tất cả các link giờ sẽ cùng chung điểm đầu và điểm cuối này.
+    let x1 = centerX1 + dirX * sourceRadiusOffset;
+    let y1 = centerY1 + dirY * sourceRadiusOffset;
+    let x2 = centerX2 - dirX * targetRadiusOffset;
+    let y2 = centerY2 - dirY * targetRadiusOffset;
+
+    // --- BƯỚC 4: VẼ ĐỒ HỌA VỚI ĐỘ CONG BIẾN THIÊN ---
     if (
       renderer.px &&
       renderer.px.stage &&
@@ -65892,44 +65872,60 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
     ) {
       const color = graphics._lineStyle.color;
       graphics.clear();
-      graphics.lineStyle(2.5 / Math.sqrt(renderer.nodeScale), color); // Tăng độ dày một chút
-      graphics.alpha = 0.8; // Tăng độ rõ nét
+      graphics.lineStyle(2.5 / Math.sqrt(renderer.nodeScale), color);
+      graphics.alpha = 0.9;
       graphics.moveTo(x1, y1);
 
-      if (link.isCurved) {
+      let cpX, cpY; // Control point cho đường cong
+
+      // --- THAY ĐỔI LỚN: LOGIC ĐỘ CONG BIẾN THIÊN ---
+      // Độ cong cơ bản, bạn có thể chỉnh giá trị 40 này để tăng/giảm độ cong chung
+      const baseCurveAmount = 40;
+
+      // Tính độ cong cho từng link một cách đối xứng
+      // Link ở giữa sẽ thẳng (offset = 0), các link khác cong dần ra hai bên
+      const curveIndexOffset = linkIndex - (totalLinks - 1) / 2;
+      const dynamicCurveAmount =
+        curveIndexOffset * baseCurveAmount * Math.sqrt(renderer.scale);
+
+      // Chỉ vẽ cong nếu độ cong khác 0 (link không phải là link ở giữa)
+      if (dynamicCurveAmount !== 0) {
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const perpX = -dy / distance;
-        const perpY = dx / distance;
-        const curveAmount = 30 * Math.sqrt(renderer.scale);
-        const cpX = midX + perpX * curveAmount;
-        const cpY = midY + perpY * curveAmount;
+        const perpX = -dirY; // Vector pháp tuyến để đẩy control point
+        const perpY = dirX;
+
+        cpX = midX + perpX * dynamicCurveAmount;
+        cpY = midY + perpY * dynamicCurveAmount;
         graphics.quadraticCurveTo(cpX, cpY, x2, y2);
       } else {
+        // Nếu là link ở giữa (hoặc chỉ có 1 link), vẽ đường thẳng
         graphics.lineTo(x2, y2);
       }
 
-      // ... (Phần logic vẽ mũi tên giữ nguyên)
-      const dirX = x2 - x1; // Hướng đơn giản cho mũi tên
-      const dirY = y2 - y1;
-      const len = Math.sqrt(dirX * dirX + dirY * dirY);
+      // --- BƯỚC 5: VẼ MŨI TÊN (LOGIC GIỮ NGUYÊN) ---
+      let arrowDirX, arrowDirY;
+      if (dynamicCurveAmount !== 0) {
+        arrowDirX = x2 - cpX;
+        arrowDirY = y2 - cpY;
+      } else {
+        arrowDirX = x2 - x1;
+      }
+      // ... (phần còn lại của logic vẽ mũi tên giữ nguyên như cũ)
+      const len = Math.sqrt(arrowDirX * arrowDirX + arrowDirY * arrowDirY);
       if (len > 0) {
-        const normalizedDirX = dirX / len;
-        const normalizedDirY = dirY / len;
-        const arrowLength = 8 * Math.sqrt(renderer.nodeScale);
-        const arrowHalfWidth = 4 * Math.sqrt(renderer.nodeScale);
-        const baseX = x2 - normalizedDirX * arrowLength;
-        const baseY = y2 - normalizedDirY * arrowLength;
-        const perpX = -normalizedDirY;
-        const perpY = normalizedDirX;
-        const wing1X = baseX + perpX * arrowHalfWidth;
-        const wing1Y = baseY + perpY * arrowHalfWidth;
-        const wing2X = baseX - perpX * arrowHalfWidth;
-        const wing2Y = baseY - perpY * arrowHalfWidth;
-
+        arrowDirX /= len;
+        arrowDirY /= len;
+        const arrowLength = 9 * Math.sqrt(renderer.nodeScale);
+        const arrowHalfWidth = 4.5 * Math.sqrt(renderer.nodeScale);
+        const baseX = x2 - arrowDirX * arrowLength;
+        const baseY = y2 - arrowDirY * arrowLength;
+        const arrowPerpX = -arrowDirY;
+        const arrowPerpY = arrowDirX;
+        const wing1X = baseX + arrowPerpX * arrowHalfWidth;
+        const wing1Y = baseY + arrowPerpY * arrowHalfWidth;
+        const wing2X = baseX - arrowPerpX * arrowHalfWidth;
+        const wing2Y = baseY - arrowPerpY * arrowHalfWidth;
         graphics.beginFill(color);
         graphics.moveTo(x2, y2);
         graphics.lineTo(wing1X, wing1Y);
@@ -65973,14 +65969,18 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
       return null;
     }
     let linkString = linkType;
+    // >>> NEW: Chuẩn hóa về chữ thường để làm key
+    const colorKey = linkString.toLowerCase();
+
     let color;
     if (link.source.id === link.target.id) {
       linkString = "";
     } else {
-      if (!this.tagColors.has(linkString)) {
+      if (!this.tagColors.has(colorKey)) {
         color = this.categoricalColors[this.currentTagColorIndex];
         this.currentTagColorIndex =
           (this.currentTagColorIndex + 1) % this.categoricalColors.length;
+
         const textL = new Text(linkString, {
           fontFamily: "Arial",
           fontSize: 14,
@@ -66010,9 +66010,9 @@ Source [[(${cleanedSourceId}) -${linkType}- (${cleanedTargetId})]]
           legendGraphics: graphicsL,
           nUsing: 0,
         };
-        this.tagColors.set(linkString, newLegendGraphic);
+        this.tagColors.set(colorKey, newLegendGraphic);
       } else {
-        const legendGraphic = this.tagColors.get(linkString);
+        const legendGraphic = this.tagColors.get(colorKey);
         if (legendGraphic) {
           color = legendGraphic == null ? void 0 : legendGraphic.color;
           legendGraphic.nUsing += 1;
