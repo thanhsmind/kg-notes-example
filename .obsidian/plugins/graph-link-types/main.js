@@ -66324,6 +66324,8 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
   // Function to continuously update the positions of text objects.
   // Trong lớp GraphLinkTypesPlugin
 
+  // Trong lớp GraphLinkTypesPlugin
+
   updatePositions() {
     if (!this.currentRenderer) {
       const now = Date.now();
@@ -66336,94 +66338,94 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
       );
       return;
     }
-
     const renderer = this.currentRenderer;
-    // --- CẢI THIỆN LOGIC XÓA LINK ---
-    // Chỉ kiểm tra và xóa link cũ sau mỗi 1 giây (60 frames) để tối ưu hiệu năng
-    if (this.animationFrameId && this.animationFrameId % 60 === 0) {
+
+    // Tối ưu: Chỉ xóa các link không còn tồn tại sau mỗi 2 giây
+    if (this.animationFrameId && this.animationFrameId % 120 === 0) {
       this.linkManager.removeLinks(renderer, renderer.links);
     }
 
+    // --- LOGIC MỚI - BẮT ĐẦU TỪ CÁC LINK ĐANG HIỂN THỊ ---
+
+    // Giai đoạn 1: Quét và nhóm tất cả các loại link dựa trên các link đang hiển thị
     const linkGroups = new Map();
+    for (const originalLink of renderer.links) {
+      const sourceId = originalLink.source.id;
+      const targetId = originalLink.target.id;
 
-    renderer.nodes.forEach((sourceNode) => {
-      const sourceId = sourceNode.id;
-      const allOutgoingLinks = this.linkManager.getAllLinkTypes(sourceId);
+      // Lấy tất cả các loại metadata từ file nguồn
+      const allMetadataLinks = this.linkManager.getAllLinkTypes(sourceId);
 
-      allOutgoingLinks.forEach((linkInfo) => {
-        const { type, targetId } = linkInfo;
-        const targetNode = renderer.nodes.find((n) => n.id === targetId);
+      // Lọc ra những loại metadata trỏ đến đúng target của link hiện tại
+      const relevantTypes = allMetadataLinks.filter(
+        (metaLink) => metaLink.targetId === targetId
+      );
 
-        if (!sourceNode || !targetNode) return;
-
+      // Nếu link này có các loại metadata liên quan
+      if (relevantTypes.length > 0) {
+        // Tạo key chuẩn hóa để nhóm link (ví dụ A->B và B->A sẽ chung nhóm)
         const groupKey = [sourceId, targetId].sort().join("|");
         if (!linkGroups.has(groupKey)) {
           linkGroups.set(groupKey, []);
         }
 
-        linkGroups.get(groupKey).push({
-          source: sourceNode,
-          target: targetNode,
-          type: type,
-          // Tìm link gốc của Obsidian. Nó có thể không tồn tại.
-          originalLink: renderer.links.find(
-            (l) => l.source.id === sourceId && l.target.id === targetId
-          ),
-        });
-      });
-    });
-
-    if (this.animationFrameId && this.animationFrameId % 20 == 0) {
-      this.linkManager.destroyMap(renderer);
+        // Thêm các loại link tìm được vào nhóm
+        for (const meta of relevantTypes) {
+          linkGroups.get(groupKey).push({
+            source: originalLink.source,
+            target: originalLink.target,
+            type: meta.type,
+            originalLink: originalLink,
+          });
+        }
+      }
     }
 
-    linkGroups.forEach((group) => {
+    // Giai đoạn 2: Duyệt qua các nhóm đã tạo và vẽ chúng
+    for (const group of linkGroups.values()) {
       const totalLinks = group.length;
       group.forEach((linkItem, index) => {
         const { source, target, type, originalLink } = linkItem;
 
-        if (originalLink) {
-          const key = this.linkManager.generateKey(source.id, target.id, type);
-          if (!this.linkManager.linksMap.has(key)) {
-            this.linkManager.addLink(
-              renderer,
-              originalLink,
-              type,
-              this.settings.tagColors,
-              this.settings.tagLegend
-            );
-          }
-
-          this.linkManager.updateLinkText(
+        const key = this.linkManager.generateKey(source.id, target.id, type);
+        if (!this.linkManager.linksMap.has(key)) {
+          this.linkManager.addLink(
             renderer,
             originalLink,
-            this.settings.tagNames,
+            type,
+            this.settings.tagColors,
+            this.settings.tagLegend
+          );
+        }
+
+        // Cập nhật text và graphics với đầy đủ thông tin
+        this.linkManager.updateLinkText(
+          renderer,
+          originalLink,
+          this.settings.tagNames,
+          type,
+          index,
+          totalLinks
+        );
+
+        if (this.settings.tagColors) {
+          // Logic vẽ cong giờ đây dựa vào chính `group` mà chúng ta đã tạo
+          const isBidirectional = group.some(
+            (other) =>
+              other.source.id === target.id && other.target.id === source.id
+          );
+          originalLink.isCurved = isBidirectional && source.id > target.id;
+
+          this.linkManager.updateLinkGraphics(
+            renderer,
+            originalLink,
             type,
             index,
             totalLinks
           );
-
-          if (this.settings.tagColors) {
-            const isBidirectional = group.some(
-              (other) =>
-                other.source.id === target.id && other.target.id === source.id
-            );
-            originalLink.isCurved = isBidirectional && source.id > target.id;
-
-            // ==========================================================
-            // >>> GỌI HÀM ĐÚNG VỚI ĐỦ 4 THAM SỐ <<<
-            this.linkManager.updateLinkGraphics(
-              renderer,
-              originalLink,
-              type,
-              index,
-              totalLinks
-            );
-            // ==========================================================
-          }
         }
       });
-    });
+    }
 
     this.animationFrameId = requestAnimationFrame(
       this.updatePositions.bind(this)
