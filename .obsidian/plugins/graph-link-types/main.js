@@ -66221,6 +66221,11 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
     this.animationFrameId = null;
     this.linkManager = new LinkManager();
     this.indexReady = false;
+
+    // --- THUỘC TÍNH MỚI CHO TỐI ƯU ---
+    this.cachedLinkGroups = null; // Cache cho cấu trúc link
+    this.lastLinkCount = -1; // Để phát hiện link được thêm/bớt
+    this.forceUpdate = true; // Cờ để buộc refresh cache
   }
   // Lifecycle method called when the plugin is loaded
   async onload() {
@@ -66246,6 +66251,13 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
         if (this.indexReady) {
           this.handleLayoutChange();
         }
+      })
+    );
+    this.registerEvent(
+      this.app.metadataCache.on("dataview:metadata-change", (op, file) => {
+        // Khi bất kỳ file nào thay đổi metadata, đánh dấu cần update lại cache
+        this.forceUpdate = true;
+        console.log("Dataview metadata changed, forcing graph update.");
       })
     );
   }
@@ -66340,53 +66352,62 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
     }
     const renderer = this.currentRenderer;
 
-    // Tối ưu: Chỉ xóa các link không còn tồn tại sau mỗi 2 giây
-    if (this.animationFrameId && this.animationFrameId % 120 === 0) {
+    // --- GIAI ĐOẠN 0: KIỂM TRA ĐIỀU KIỆN REFRESH CACHE ---
+    // Cache sẽ được làm mới nếu:
+    // 1. Cờ forceUpdate được bật (do metadata thay đổi).
+    // 2. Số lượng link trên đồ thị thay đổi (do người dùng thay đổi bộ lọc).
+    if (this.forceUpdate || renderer.links.length !== this.lastLinkCount) {
+      this.forceUpdate = false;
+      this.lastLinkCount = renderer.links.length;
+      console.log("Refreshing link cache...");
+
+      // --- GIAI ĐOẠN 1: XỬ LÝ NẶNG & TẠO CACHE ---
+      // Toàn bộ logic quét và nhóm link từ lần trước được chuyển vào đây.
+      const newLinkGroups = new Map();
+      for (const originalLink of renderer.links) {
+        const sourceId = originalLink.source.id;
+        const targetId = originalLink.target.id;
+        const allMetadataLinks = this.linkManager.getAllLinkTypes(sourceId);
+        const relevantTypes = allMetadataLinks.filter(
+          (metaLink) => metaLink.targetId === targetId
+        );
+
+        if (relevantTypes.length > 0) {
+          const groupKey = [sourceId, targetId].sort().join("|");
+          if (!newLinkGroups.has(groupKey)) {
+            newLinkGroups.set(groupKey, []);
+          }
+          for (const meta of relevantTypes) {
+            newLinkGroups.get(groupKey).push({
+              source: originalLink.source,
+              target: originalLink.target,
+              type: meta.type,
+              originalLink: originalLink,
+            });
+          }
+        }
+      }
+      this.cachedLinkGroups = newLinkGroups;
+
+      // Xóa các link không còn tồn tại trong cache mới
       this.linkManager.removeLinks(renderer, renderer.links);
     }
 
-    // --- LOGIC MỚI - BẮT ĐẦU TỪ CÁC LINK ĐANG HIỂN THỊ ---
-
-    // Giai đoạn 1: Quét và nhóm tất cả các loại link dựa trên các link đang hiển thị
-    const linkGroups = new Map();
-    for (const originalLink of renderer.links) {
-      const sourceId = originalLink.source.id;
-      const targetId = originalLink.target.id;
-
-      // Lấy tất cả các loại metadata từ file nguồn
-      const allMetadataLinks = this.linkManager.getAllLinkTypes(sourceId);
-
-      // Lọc ra những loại metadata trỏ đến đúng target của link hiện tại
-      const relevantTypes = allMetadataLinks.filter(
-        (metaLink) => metaLink.targetId === targetId
+    // --- GIAI ĐOẠN 2: VẼ NHẸ NHÀNG TỪ CACHE ---
+    // Giai đoạn này chạy mỗi frame, nhưng chỉ dùng dữ liệu đã được xử lý sẵn.
+    if (!this.cachedLinkGroups) {
+      this.animationFrameId = requestAnimationFrame(
+        this.updatePositions.bind(this)
       );
-
-      // Nếu link này có các loại metadata liên quan
-      if (relevantTypes.length > 0) {
-        // Tạo key chuẩn hóa để nhóm link (ví dụ A->B và B->A sẽ chung nhóm)
-        const groupKey = [sourceId, targetId].sort().join("|");
-        if (!linkGroups.has(groupKey)) {
-          linkGroups.set(groupKey, []);
-        }
-
-        // Thêm các loại link tìm được vào nhóm
-        for (const meta of relevantTypes) {
-          linkGroups.get(groupKey).push({
-            source: originalLink.source,
-            target: originalLink.target,
-            type: meta.type,
-            originalLink: originalLink,
-          });
-        }
-      }
+      return;
     }
 
-    // Giai đoạn 2: Duyệt qua các nhóm đã tạo và vẽ chúng
-    for (const group of linkGroups.values()) {
+    for (const group of this.cachedLinkGroups.values()) {
       const totalLinks = group.length;
       group.forEach((linkItem, index) => {
         const { source, target, type, originalLink } = linkItem;
 
+        // Logic thêm link và vẽ giữ nguyên như cũ, vì nó phải cập nhật vị trí mỗi frame
         const key = this.linkManager.generateKey(source.id, target.id, type);
         if (!this.linkManager.linksMap.has(key)) {
           this.linkManager.addLink(
@@ -66397,8 +66418,6 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
             this.settings.tagLegend
           );
         }
-
-        // Cập nhật text và graphics với đầy đủ thông tin
         this.linkManager.updateLinkText(
           renderer,
           originalLink,
@@ -66407,15 +66426,12 @@ var GraphLinkTypesPlugin = class extends import_obsidian.Plugin {
           index,
           totalLinks
         );
-
         if (this.settings.tagColors) {
-          // Logic vẽ cong giờ đây dựa vào chính `group` mà chúng ta đã tạo
           const isBidirectional = group.some(
             (other) =>
               other.source.id === target.id && other.target.id === source.id
           );
           originalLink.isCurved = isBidirectional && source.id > target.id;
-
           this.linkManager.updateLinkGraphics(
             renderer,
             originalLink,
